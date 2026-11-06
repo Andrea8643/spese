@@ -5,7 +5,7 @@ const sub = (id: string, name: string, keywords: string[] = []) => ({ id, name, 
 export const DEFAULT_CATEGORIES: Category[] = [
   // ───────────── NECESSITÀ ─────────────
   {
-    id: 'alimentari', name: 'Alimentari', icon: '🛒', group: 'necessita', budgetPct: 30,
+    id: 'alimentari', name: 'Alimentari', icon: '🛒', group: 'necessita', budgetPct: 25,
     subs: [
       sub('supermercato', 'Supermercato', [
         'conad', 'lidl', 'coop', 'esselunga', 'eurospin', 'aldi', 'md discount', 'md ', 'penny', 'carrefour',
@@ -18,15 +18,13 @@ export const DEFAULT_CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'trasporti', name: 'Trasporti', icon: '⛽', group: 'necessita', budgetPct: 35,
+    id: 'trasporti', name: 'Trasporti', icon: '⛽', group: 'necessita', budgetPct: 39,
     subs: [
-      sub('carburante', 'Carburante', [
+      sub('carburante', 'Carburante (GPL)', [
         'benzina', 'diesel', 'gasolio', 'carburante', 'rifornimento', 'pieno', 'eni', 'enilive', 'q8', 'ip ',
         'tamoil', 'esso', 'shell', 'api ', 'agip', 'distributore', 'gpl', 'metano', 'self', 'ip', 'api', 'beyfin', 'repsol', 'total', 'totalerg', 'erg', 'ewa', 'pompa',
       ]),
       sub('parcheggi', 'Parcheggi e pedaggi', ['parcheggio', 'pedaggio', 'autostrada', 'telepass', 'easypark', 'strisce blu', 'ztl', 'casello', 'parchimetro', 'park', 'garage', 'autosilo', 'multa', 'contravvenzione', 'tutor', 'autovelox', 'myCicero', 'mycicero', 'telepass pay',
-      ]),
-      sub('mezzi', 'Mezzi pubblici', ['treno', 'trenitalia', 'italo', 'bus', 'autobus', 'metro', 'tram', 'biglietto', 'abbonamento bus', 'taxi', 'uber', 'flixbus', 'trenord', 'atm', 'atac', 'gtt', 'tper', 'start romagna', 'monopattino', 'lime', 'bird', 'dott', 'bici', 'blablacar', 'free now', 'freenow', 'itabus',
       ]),
       sub('lavaggio', 'Lavaggio auto', ['lavaggio', 'autolavaggio', 'aspirapolvere auto', 'self wash', 'lavaggio interni', 'profumatore auto', 'arbre magique',
       ]),
@@ -57,7 +55,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'telefono', name: 'Telefono', icon: '📱', group: 'necessita', budgetPct: 4,
+    id: 'telefono', name: 'Telefono', icon: '📱', group: 'necessita', budgetPct: 5,
     subs: [
       sub('ricarica', 'Ricarica / abbonamento', ['ricarica telefonica', 'ricarica tim', 'ricarica vodafone', 'tim', 'vodafone', 'windtre', 'wind', 'iliad', 'ho mobile', 'ho.', 'kena', 'very mobile', 'fastweb', 'postemobile', 'coopvoce', 'sim', 'offerta telefonica', 'ricarica cellulare', 'ricarica', 'credito telefonico', 'bolletta telefono', 'abbonamento telefono', 'rata telefono', 'tiscali', 'spusu', 'lyca', 'lycamobile', 'tim ricarica',
       ]),
@@ -66,7 +64,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
 
   // ───────────── PERSONALE ─────────────
   {
-    id: 'ristoranti', name: 'Ristoranti & Fast food', icon: '🍔', group: 'personale', budgetPct: 28,
+    id: 'ristoranti', name: 'Ristoranti & Fast food', icon: '🍔', group: 'personale', budgetPct: 30,
     subs: [
       sub('fastfood', 'Fast food', [
         'mcdonald', 'mc donald', 'mcdonalds', 'mac donald', 'mc ', 'burger king', 'bk ', 'kfc', 'old wild west',
@@ -96,7 +94,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'fitness', name: 'Fitness & Sport', icon: '🏋️', group: 'personale', budgetPct: 15,
+    id: 'fitness', name: 'Fitness & Sport', icon: '🏋️', group: 'personale', budgetPct: 5,
     subs: [
       sub('palestra', 'Palestra', ['palestra', 'abbonamento palestra', 'mcfit', 'mc fit', 'virgin active', 'anytime fitness', 'fit express', 'personal trainer', 'crossfit', 'piscina', 'corso', 'quota palestra', 'iscrizione palestra', 'mensile palestra', 'boxe', 'kickboxing', 'mma', 'calcetto', 'padel', 'tennis', 'campo', 'yoga', 'pilates', 'spinning', 'nuoto', 'arti marziali', 'karate', 'judo', 'ingresso piscina', 'arrampicata', 'golf',
       ]),
@@ -109,7 +107,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'abbigliamento', name: 'Abbigliamento & Scarpe', icon: '👕', group: 'personale', budgetPct: 10,
+    id: 'abbigliamento', name: 'Abbigliamento & Scarpe', icon: '👕', group: 'personale', budgetPct: 12,
     subs: [
       sub('vestiti', 'Vestiti', ['zara', 'h&m', 'hm ', 'pull&bear', 'pull and bear', 'bershka', 'primark', 'ovs', 'jack&jones', 'jack and jones', 'maglietta', 'maglia', 'felpa', 'jeans', 'pantaloni', 'giacca', 'giubbotto', 'camicia', 'vestiti', 'shein', 'zalando', 'calzini', 'boxer', 'intimo', 'new yorker', 'newyorker', 'kiabi', 'terranova', 'tezenis', 'calzedonia', 'intimissimi', 'yamamay', 'oviesse', 'coin', 'upim', 'piazza italia', 'benetton', 'united colors', 'sisley', 'motivi', 'stradivarius', 'mango', 'uniqlo', 'celio', 'jack jones', 'levis', 'levi', 'tommy hilfiger', 'calvin klein', 'lacoste', 'ralph lauren', 'guess', 'diesel', 'carhartt', 'the north face', 'north face', 'napapijri', 'colmar', 'moncler', 'stone island', 'asos', 'vinted', 'temu', 'aliexpress', 'outlet', 'saldi', 'abbigliamento', 'abito', 'vestito', 'completo', 'gonna', 'top', 'canottiera', 'pigiama', 'cappotto', 'piumino', 'gilet', 'maglione', 'cardigan', 'polo', 't shirt', 'tshirt', 'maglietta', 'pantalone', 'jogger', 'tuta', 'cargo', 'bermuda', 'costume', 'calza', 'mutande', 'slip', 'sciarpa', 'guanti', 'berretto', 'cappellino', 'cravatta',
       ]),
@@ -120,7 +118,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'tecnologia', name: 'Tecnologia', icon: '🎮', group: 'personale', budgetPct: 6,
+    id: 'tecnologia', name: 'Tecnologia', icon: '🎮', group: 'personale', budgetPct: 7,
     subs: [
       sub('elettronica', 'Elettronica', ['iphone', 'samsung', 'smartphone', 'cuffie', 'airpods', 'cavo', 'caricatore', 'cover', 'pc', 'computer', 'tablet', 'ipad', 'monitor', 'mouse', 'tastiera', 'mediaworld', 'unieuro', 'euronics', 'apple', 'amazon', 'powerbank', 'smartwatch', 'mediamarkt', 'trony', 'expert', 'comet', 'apple store', 'xiaomi', 'huawei', 'oneplus', 'oppo', 'pixel', 'macbook', 'laptop', 'notebook', 'portatile', 'scheda video', 'ssd', 'hard disk', 'chiavetta usb', 'usb', 'hdmi', 'adattatore', 'presa', 'prolunga', 'cassa bluetooth', 'speaker', 'jbl', 'bose', 'sony', 'echo', 'alexa', 'smart tv', 'televisore', 'tv', 'stampante', 'webcam', 'microfono', 'auricolari', 'pellicola', 'vetro temperato', 'custodia', 'apple watch', 'garmin', 'fitbit', 'kindle', 'gopro', 'drone', 'lampada', 'led', 'ventilatore', 'stufetta', 'phon', 'piastra', 'regolarbarba', 'tagliacapelli', 'rasoio elettrico', 'philips', 'braun', 'dyson',
       ]),
@@ -129,7 +127,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'svago', name: 'Svago & Uscite', icon: '🎉', group: 'personale', budgetPct: 13,
+    id: 'svago', name: 'Svago & Uscite', icon: '🎉', group: 'personale', budgetPct: 12,
     subs: [
       sub('uscite', 'Uscite & Serate', ['discoteca', 'serata', 'locale', 'festa', 'ingresso', 'compleanno', 'bowling', 'sala giochi', 'karaoke', 'tabacchi', 'sigarette', 'svapo', 'gratta e vinci', 'scommessa', 'serata', 'drink', 'prevendita', 'tavolo', 'privè', 'prive', 'lista', 'guardaroba', 'biliardo', 'freccette', 'escape room', 'luna park', 'giostre', 'lotteria', 'superenalotto', 'lotto', 'snai', 'sisal', 'bet', 'eurobet', 'iqos', 'heets', 'terea', 'tabacco', 'cartine', 'filtri', 'accendino', 'liquidi svapo',
       ]),
@@ -140,7 +138,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'abbonamenti', name: 'Abbonamenti digitali', icon: '📺', group: 'personale', budgetPct: 6,
+    id: 'abbonamenti', name: 'Abbonamenti digitali', icon: '📺', group: 'personale', budgetPct: 8,
     subs: [
       sub('streaming', 'Streaming & App', ['netflix', 'spotify', 'disney', 'prime video', 'amazon prime', 'dazn', 'now tv', 'sky', 'youtube premium', 'apple music', 'icloud', 'google one', 'playstation plus', 'ps plus', 'game pass', 'chatgpt', 'claude', 'abbonamento app', 'crunchyroll', 'paramount', 'apple tv', 'appletv', 'timvision', 'infinity', 'discovery', 'mubi', 'tidal', 'deezer', 'amazon music', 'audible', 'duolingo', 'canva', 'adobe', 'microsoft 365', 'office', 'onedrive', 'dropbox', 'nordvpn', 'vpn', 'tinder', 'bumble', 'hinge', 'onlyfans', 'patreon', 'abbonamento', 'rinnovo',
       ]),
@@ -156,19 +154,19 @@ export const DEFAULT_CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'viaggi', name: 'Viaggi', icon: '✈️', group: 'personale', budgetPct: 4,
+    id: 'viaggi', name: 'Viaggi', icon: '✈️', group: 'personale', budgetPct: 6,
     subs: [
       sub('viaggi', 'Viaggi & Vacanze', ['volo', 'aereo', 'ryanair', 'easyjet', 'wizz', 'hotel', 'albergo', 'airbnb', 'booking', 'b&b', 'bnb', 'vacanza', 'viaggio', 'weekend', 'traghetto', 'ostello', 'vueling', 'ita airways', 'volotea', 'lufthansa', 'alitalia', 'skyscanner', 'expedia', 'edreams', 'lastminute', 'trivago', 'agoda', 'hostelworld', 'campeggio', 'camping', 'resort', 'crociera', 'msc', 'costa crociere', 'pernottamento', 'notte', 'escursione', 'tour', 'gita', 'souvenir', 'tassa di soggiorno', 'noleggio auto', 'autonoleggio', 'bagaglio', 'check in',
       ]),
     ],
   },
   {
-    id: 'regali', name: 'Regali', icon: '🎁', group: 'personale', budgetPct: 3,
+    id: 'regali', name: 'Regali', icon: '🎁', group: 'personale', budgetPct: 4,
     subs: [sub('regali', 'Regali', ['regalo', 'regali', 'pensierino', 'fiori', 'mazzo di fiori', 'festa della mamma', 'san valentino', 'natale', 'compleanno regalo', 'gift card', 'buono regalo', 'cesto', 'bomboniera', 'fiorista', 'peluche', 'gioielleria', 'gioiello',
       ])],
   },
   {
-    id: 'altro', name: 'Altro', icon: '📦', group: 'personale', budgetPct: 2,
+    id: 'altro', name: 'Altro', icon: '📦', group: 'personale', budgetPct: 3,
     subs: [sub('varie', 'Varie', ['varie', 'altro', 'commissione', 'commissioni', 'spedizione', 'posta', 'raccomandata', 'francobolli', 'bancomat prelievo', 'canone', 'tassa', 'marca da bollo', 'donazione', 'beneficenza', 'animali', 'veterinario', 'crocchette', 'lavanderia', 'tintoria', 'calzolaio', 'chiavi', 'fotocopie', 'stampa',
       ])],
   },
@@ -201,3 +199,11 @@ export function defaultSettings(startMonth: string): Settings {
     recapSeen: [],
   }
 }
+
+/** Spese ricorrenti iniziali (aggiunte una volta sola). */
+export const SEED_RECURRING = [
+  { key: 'claude', type: 'expense', description: 'Claude', amount: 20, categoryId: 'abbonamenti', subId: 'streaming', method: 'carta', frequency: 'monthly', day: 1 },
+  { key: 'prime', type: 'expense', description: 'Amazon Prime', amount: 4.99, categoryId: 'abbonamenti', subId: 'streaming', method: 'carta', frequency: 'monthly', day: 1 },
+  { key: 'icloud', type: 'expense', description: 'iCloud+ (spazio Apple)', amount: 1.99, categoryId: 'abbonamenti', subId: 'streaming', method: 'carta', frequency: 'monthly', day: 1 },
+  { key: 'fitactive', type: 'expense', description: 'Fit Active Settimo – abbonamento 12 mesi', amount: 239.88, categoryId: 'fitness', subId: 'palestra', method: 'carta', frequency: 'yearly', day: 1, month: 6 },
+] as const

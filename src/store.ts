@@ -1,7 +1,7 @@
 import { collection, deleteDoc, doc, onSnapshot, setDoc, writeBatch } from 'firebase/firestore'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { db } from './firebase'
-import { DEFAULT_CATEGORIES, defaultSettings } from './defaults'
+import { catPctFrom, DEFAULT_CATEGORIES, defaultSettings, SEED_RECURRING } from './defaults'
 import type { Learned, Recurring, Settings, Tx } from './types'
 import { addDays, clean, currentMonth, parseISO, todayISO, toISO } from './utils'
 
@@ -115,9 +115,10 @@ export function recurringDates(r: Recurring, from: string, to: string): string[]
   const start = r.startDate > from ? r.startDate : from
   for (let d = start; d <= to; d = addDays(d, 1)) {
     const dt = parseISO(d)
-    if (r.frequency === 'monthly') {
+    if (r.frequency === 'monthly' || r.frequency === 'yearly') {
       const last = new Date(dt.getFullYear(), dt.getMonth() + 1, 0).getDate()
-      if (dt.getDate() === Math.min(r.day, last)) out.push(d)
+      const monthOk = r.frequency === 'monthly' || dt.getMonth() + 1 === (r.month ?? 1)
+      if (monthOk && dt.getDate() === Math.min(r.day, last)) out.push(d)
     } else if (((dt.getDay() + 6) % 7) + 1 === r.day) out.push(d)
     if (out.length > 400) break
   }
@@ -156,6 +157,25 @@ export function useStore(backend: Backend | null) {
   useEffect(() => {
     if (backend && settings === null) void backend.saveSettings(defaultSettings(currentMonth()))
   }, [backend, settings])
+
+  // aggiornamento una tantum: trasporti solo auto (GPL), nuove percentuali, abbonamenti e palestra annuale
+  const migrating = useRef(false)
+  useEffect(() => {
+    if (!backend || !settings || !recurring || migrating.current || (settings.schema ?? 1) >= 2) return
+    migrating.current = true
+    void (async () => {
+      const month = currentMonth()
+      const defT = DEFAULT_CATEGORIES.find((c) => c.id === 'trasporti')!
+      const categories = settings.categories.map((c) => (c.id === 'trasporti' ? { ...c, subs: defT.subs } : c))
+      const allocation = { ...settings.allocation, catPct: { ...settings.allocation.catPct, ...catPctFrom(DEFAULT_CATEGORIES) } }
+      for (const r of SEED_RECURRING) {
+        if (recurring.some((x) => x.description === r.description)) continue
+        const { key, ...rest } = r
+        await backend.saveRecurring({ ...rest, id: `seed-${key}`, startDate: `${month}-01`, active: true } as Recurring)
+      }
+      await backend.saveSettings({ ...settings, categories, allocation, allocationHistory: { ...settings.allocationHistory, [month]: allocation }, schema: 2 })
+    })()
+  }, [backend, settings, recurring])
 
   // genera le spese/entrate ricorrenti fino a oggi
   useEffect(() => {

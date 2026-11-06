@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { learnEntries, suggestCategory } from './categorize'
 import { catOf, computeBalances, euroPart } from './finance'
-import { ISpark, ITrash } from './icons'
+import { Sparkles, Trash2 } from 'lucide-react'
 import type { Category, Recurring, Tx } from './types'
-import { GROUP_LABEL, Sheet, useApp } from './ui'
+import { CatIcon, GROUP_LABEL, Sheet, useApp } from './ui'
 import { addDays, fmt, parseAmount, parseISO, round2, todayISO, uid } from './utils'
 
 type Mode = 'expense' | 'income' | 'voucher_in'
@@ -142,7 +142,7 @@ export function AddTx({ initial, onClose }: { initial?: Partial<Tx>; onClose: ()
           <div className="seg full">
             <button type="button" className={mode === 'expense' ? 'on' : ''} onClick={() => setMode('expense')}>Spesa</button>
             <button type="button" className={mode === 'income' ? 'on' : ''} onClick={() => setMode('income')}>Entrata</button>
-            <button type="button" className={mode === 'voucher_in' ? 'on' : ''} onClick={() => setMode('voucher_in')}>Buoni ricevuti</button>
+            <button type="button" className={mode === 'voucher_in' ? 'on' : ''} onClick={() => setMode('voucher_in')}>Buoni</button>
           </div>
         )}
 
@@ -156,11 +156,11 @@ export function AddTx({ initial, onClose }: { initial?: Partial<Tx>; onClose: ()
             {/* categoria: scelta in automatico, si cambia solo se sbagliata */}
             {!picking && (cat && sub ? (
               <div className={manualCat ? 'split' : 'suggest'} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 22 }}>{cat.icon}</span>
+                <CatIcon cat={cat} size="sm" />
                 <span className="grow" style={{ minWidth: 0 }}>
                   <span className="xs muted" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {!manualCat && <span style={{ width: 13, height: 13, display: 'inline-flex', color: 'var(--accent)' }}><ISpark /></span>}
-                    {manualCat ? 'Categoria' : 'Riconosciuta in automatico'} · {GROUP_LABEL[cat.group]}
+                    {!manualCat && <span style={{ width: 13, height: 13, display: 'inline-flex', color: 'var(--accent)' }}><Sparkles size={13} /></span>}
+                    {manualCat ? 'Scelta da te' : 'Automatica'} · {GROUP_LABEL[cat.group]}
                   </span>
                   <span className="bold" style={{ display: 'block' }}>{cat.name} › {sub.name}</span>
                 </span>
@@ -296,7 +296,7 @@ export function AddTx({ initial, onClose }: { initial?: Partial<Tx>; onClose: ()
 
         <div className="row" style={{ marginTop: 4 }}>
           {editing && (
-            <button type="button" className="btn btn-danger" onClick={remove} aria-label="Elimina"><ITrash /> Elimina</button>
+            <button type="button" className="btn btn-danger" onClick={remove} aria-label="Elimina"><Trash2 /> Elimina</button>
           )}
           <button type="submit" className="btn btn-primary grow" disabled={saving}>
             {saving ? 'Salvataggio…' : editing ? 'Salva modifiche' : 'Aggiungi'}
@@ -328,7 +328,7 @@ function CategoryPicker({ categories, value, onPick, onCancel }: { categories: C
                 className={`cat-tile ${open === c.id ? 'on' : ''}`}
                 onClick={() => (c.subs.length === 1 ? onPick(`${c.id}|${c.subs[0].id}`) : setOpen(c.id))}
               >
-                <span style={{ fontSize: 22 }}>{c.icon}</span>
+                <CatIcon cat={c} size="sm" />
                 <span>{c.name}</span>
               </button>
             ))}

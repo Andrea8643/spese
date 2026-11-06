@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddTx } from './AddTx'
 import { ALLOWED_EMAIL } from './firebase-config'
 import { auth, isConfigured, login, logout } from './firebase'
-import { IChart, IHome, IList, IPiggy, IPlus, ISettings } from './icons'
+import { BarChart3, House, ListOrdered, PiggyBank, Plus, Settings2, type LucideIcon } from 'lucide-react'
 import { Home } from './pages/Home'
 import { Movements } from './pages/Movements'
 import { Report } from './pages/Report'
@@ -15,13 +15,15 @@ import type { Tx } from './types'
 import { Ctx, useToast, type Page } from './ui'
 import { addMonths, currentMonth } from './utils'
 
-const NAV: [Page, string, () => React.ReactElement][] = [
-  ['home', 'Home', IHome],
-  ['movimenti', 'Movimenti', IList],
-  ['bilancio', 'Bilancio', IChart],
-  ['risparmi', 'Risparmi', IPiggy],
-  ['impostazioni', 'Impostazioni', ISettings],
+const NAV: [Page, string, LucideIcon][] = [
+  ['home', 'Home', House],
+  ['movimenti', 'Movimenti', ListOrdered],
+  ['bilancio', 'Bilancio', BarChart3],
+  ['risparmi', 'Risparmi', PiggyBank],
+  ['impostazioni', 'Impostazioni', Settings2],
 ]
+
+const Aurora = () => <div className="aurora" aria-hidden="true"><span /><span /><span /></div>
 
 const demoAllowed = !isConfigured || import.meta.env.VITE_DEMO === '1'
 
@@ -48,6 +50,7 @@ export default function App() {
   if (!backend) {
     return (
       <div className="login">
+        <Aurora />
         <div className="login-card">
           <div className="brand-mark">€</div>
           <h1>Le mie spese</h1>
@@ -98,28 +101,34 @@ function Shell({ backend, demo, email }: { backend: Backend; demo: boolean; emai
   const ctx = { ...store, backend, demo, openAdd, toast: toast.show, go }
   return (
     <Ctx.Provider value={ctx}>
+      <Aurora />
       <div className="app">
         <aside className="sidebar">
           <div className="brand"><span className="brand-mark">€</span> Le mie spese</div>
           {NAV.map(([p, l, I]) => (
             <button key={p} className={`side-link ${page === p ? 'active' : ''}`} onClick={() => go(p)}><I /> {l}</button>
           ))}
-          <button className="btn btn-primary side-add" onClick={() => openAdd()}><span style={{ width: 18, height: 18, display: 'inline-flex' }}><IPlus /></span> Nuova spesa</button>
-          {demo && <div className="xs muted" style={{ marginTop: 'auto', padding: 8 }}>Modalità prova</div>}
+          <button className="btn btn-primary side-add" onClick={() => openAdd()}><Plus /> Nuovo movimento</button>
+          {demo && <div className="xs muted" style={{ marginTop: 'auto', padding: 8 }}>Modalità test</div>}
         </aside>
         <main className="main">
-          {page === 'home' && <Home />}
-          {page === 'movimenti' && <Movements />}
-          {page === 'bilancio' && <Report />}
-          {page === 'risparmi' && <Savings />}
-          {page === 'impostazioni' && <SettingsPage email={email} />}
+          <div className="page" key={page}>
+            {page === 'home' && <Home />}
+            {page === 'movimenti' && <Movements />}
+            {page === 'bilancio' && <Report />}
+            {page === 'risparmi' && <Savings />}
+            {page === 'impostazioni' && <SettingsPage email={email} />}
+          </div>
         </main>
-        <nav className="tabbar">
-          {NAV.map(([p, l, I]) => (
-            <button key={p} className={`tab ${page === p ? 'active' : ''}`} onClick={() => go(p)} aria-label={l}><I /><span>{l === 'Impostazioni' ? 'Altro' : l}</span></button>
+        <nav className="tabbar" aria-label="Navigazione">
+          {NAV.slice(0, 2).map(([p, l, I]) => (
+            <button key={p} className={`tab ${page === p ? 'active' : ''}`} onClick={() => go(p)} aria-label={l}><I /><span>{l}</span></button>
+          ))}
+          <button className="tab-add" onClick={() => openAdd()} aria-label="Nuovo movimento"><Plus strokeWidth={2.6} /></button>
+          {NAV.slice(2, 4).map(([p, l, I]) => (
+            <button key={p} className={`tab ${page === p ? 'active' : ''}`} onClick={() => go(p)} aria-label={l}><I /><span>{l}</span></button>
           ))}
         </nav>
-        <button className="fab" onClick={() => openAdd()} aria-label="Aggiungi spesa"><IPlus /></button>
       </div>
       {adding && <AddTx initial={adding} onClose={() => setAdding(null)} />}
       {recapMonth && <Recap month={recapMonth} onClose={() => setRecapMonth(null)} />}
@@ -129,7 +138,7 @@ function Shell({ backend, demo, email }: { backend: Backend; demo: boolean; emai
 }
 
 function Splash() {
-  return <div className="login"><div className="brand-mark" style={{ width: 56, height: 56, fontSize: 26, borderRadius: 18 }}>€</div></div>
+  return <div className="login"><div className="login-card"><div className="brand-mark">€</div></div></div>
 }
 
 function GoogleG() {

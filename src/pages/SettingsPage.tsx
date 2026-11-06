@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react'
 import { learnedLabel } from '../categorize'
 import { summarizeMonth } from '../finance'
 import { logout } from '../firebase'
-import { ILogout, ITrash } from '../icons'
+import { LogOut, Pencil, Trash2 } from 'lucide-react'
 import type { Category, Group, PayMethod, Recurring, Settings } from '../types'
-import { GROUP_COLOR, GROUP_LABEL, METHOD_LABEL, Sheet, useApp } from '../ui'
-import { currentMonth, fmt, fmt0, parseAmount, round2, todayISO, uid, WEEKDAYS_SHORT } from '../utils'
+import { CatIcon, GROUP_COLOR, GROUP_LABEL, METHOD_LABEL, Sheet, useApp } from '../ui'
+import { cap, currentMonth, fmt, fmt0, MONTHS, parseAmount, round2, todayISO, uid, WEEKDAYS_SHORT } from '../utils'
 
 const num = (s: string) => {
   const n = parseAmount(s)
@@ -15,7 +15,11 @@ const num = (s: string) => {
 export function SettingsPage({ email }: { email?: string | null }) {
   const { settings, txs, backend, toast, recurring, learned, demo } = useApp()
   const [draft, setDraft] = useState<Settings>(settings)
-  const [newRec, setNewRec] = useState(false)
+  const [recEdit, setRecEdit] = useState<Recurring | 'new' | null>(null)
+  // ordine delle categorie per percentuale (si aggiorna quando finisci di modificare)
+  const sortIds = (d: Settings) => d.categories.slice().sort((x, y) => (d.allocation.catPct[y.id] ?? 0) - (d.allocation.catPct[x.id] ?? 0)).map((c) => c.id)
+  const [order, setOrder] = useState<string[]>(() => sortIds(settings))
+  const resort = () => setOrder(sortIds(draft))
   const dirty = JSON.stringify({ ...draft, recapSeen: [] }) !== JSON.stringify({ ...settings, recapSeen: [] })
   const base = useMemo(() => summarizeMonth(draft, txs, currentMonth()).base, [draft, txs])
   const a = draft.allocation
@@ -30,6 +34,7 @@ export function SettingsPage({ email }: { email?: string | null }) {
     const m = currentMonth()
     const next: Settings = { ...draft, recapSeen: settings.recapSeen, allocationHistory: { ...draft.allocationHistory, [m]: draft.allocation } }
     await backend.saveSettings(next)
+    resort()
     toast('Impostazioni salvate ✓')
   }
 
@@ -55,18 +60,20 @@ export function SettingsPage({ email }: { email?: string | null }) {
 
   return (
     <>
-      <div className="topbar"><h1>Impostazioni</h1></div>
+      <div className="header"><h1>Impostazioni</h1></div>
 
-      <div className="stack" style={{ gap: 14 }}>
+      <div className="stack stagger" style={{ gap: 12 }}>
         <div className="card">
           <div className="card-title">Ripartizione delle entrate</div>
           <div className="small text2" style={{ marginBottom: 12 }}>Ogni entrata del mese viene divisa così. Su {fmt0(base)}:</div>
-          <div className="grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0,1fr))' }}>
-            {([['savingsPct', '💰 Risparmi', 'var(--savings)'], ['needsPct', '🛒 Necessità', 'var(--needs)'], ['personalPct', '🎯 Personale', 'var(--personal)']] as const).map(([k, l, c]) => (
-              <div className="field" key={k}>
-                <label htmlFor={k}><span className="dot" style={{ background: c, marginRight: 6 }} />{l}</label>
-                <div className="row gap-s"><input id={k} className="input tnum center" inputMode="numeric" value={a[k]} onChange={(e) => setAlloc({ [k]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} /><span>%</span></div>
-                <span className="xs muted tnum">{fmt0((base * a[k]) / 100)}</span>
+          <div className="stack" style={{ gap: 16 }}>
+            {([['savingsPct', 'Risparmi', 'var(--savings)'], ['needsPct', 'Necessità', 'var(--needs)'], ['personalPct', 'Personale', 'var(--personal)']] as const).map(([k, l, c]) => (
+              <div key={k}>
+                <div className="row between small" style={{ marginBottom: 8 }}>
+                  <label htmlFor={k} className="row gap-s bold"><span className="dot" style={{ background: c }} />{l}</label>
+                  <span className="tnum"><b>{a[k]}%</b> <span className="muted">· {fmt0((base * a[k]) / 100)}</span></span>
+                </div>
+                <input id={k} type="range" min={0} max={100} step={1} value={a[k]} style={{ ['--thumb' as string]: c }} onChange={(e) => setAlloc({ [k]: Number(e.target.value) })} />
               </div>
             ))}
           </div>
@@ -79,18 +86,21 @@ export function SettingsPage({ email }: { email?: string | null }) {
 
         {(['necessita', 'personale'] as Group[]).map((g) => {
           const groupBudget = (base * (g === 'necessita' ? a.needsPct : a.personalPct)) / 100
-          const cats = draft.categories.filter((c) => c.group === g)
+          const cats = draft.categories.filter((c) => c.group === g).sort((x, y) => order.indexOf(x.id) - order.indexOf(y.id))
           const sum = cats.reduce((s, c) => s + (a.catPct[c.id] ?? 0), 0)
           return (
             <div className="card" key={g}>
-              <div className="card-title row gap-s"><span className="dot" style={{ background: GROUP_COLOR[g] }} /> Budget {GROUP_LABEL[g]} per categoria ({fmt0(groupBudget)})</div>
-              <div className="stack" style={{ gap: 8 }}>
+              <div className="card-title"><span className="dot" style={{ background: GROUP_COLOR[g] }} /> {GROUP_LABEL[g]} per categoria · {fmt0(groupBudget)}</div>
+              <div className="stack" style={{ gap: 12 }}>
                 {cats.map((c) => (
-                  <div className="row" key={c.id}>
-                    <span className="grow ellipsis small">{c.icon} {c.name}{c.fund && <span className="badge badge-muted" style={{ marginLeft: 6 }}>cumulativo</span>}</span>
-                    <input className="input tnum center" style={{ width: 70, minHeight: 38, padding: 6 }} inputMode="numeric" aria-label={`Percentuale ${c.name}`} value={a.catPct[c.id] ?? 0} onChange={(e) => setAlloc({ catPct: { ...a.catPct, [c.id]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} />
-                    <span className="small">%</span>
-                    <span className="tnum small text2" style={{ width: 70, textAlign: 'right' }}>{fmt0((groupBudget * (a.catPct[c.id] ?? 0)) / 100)}</span>
+                  <div className="row" key={c.id} style={{ gap: 10 }}>
+                    <CatIcon cat={c} size="sm" />
+                    <span className="grow small" style={{ minWidth: 0 }}>
+                      <span className="ellipsis bold" style={{ display: 'block' }}>{c.name}</span>
+                      <span className="xs muted tnum">{fmt0((groupBudget * (a.catPct[c.id] ?? 0)) / 100)} al mese{c.fund ? ' · cumulativo' : ''}</span>
+                    </span>
+                    <input className="input tnum center" style={{ width: 64, minHeight: 42, padding: 6 }} inputMode="numeric" aria-label={`Percentuale ${c.name}`} value={a.catPct[c.id] ?? 0} onBlur={resort} onChange={(e) => setAlloc({ catPct: { ...a.catPct, [c.id]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) } })} />
+                    <span className="small muted">%</span>
                   </div>
                 ))}
               </div>
@@ -143,7 +153,7 @@ export function SettingsPage({ email }: { email?: string | null }) {
                     <div key={s.id} className="split">
                       <div className="row">
                         <input className="input grow" value={s.name} aria-label="Nome sottocategoria" onChange={(e) => setCat(c.id, { subs: c.subs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) })} />
-                        {c.subs.length > 1 && <button className="icon-btn" aria-label="Elimina sottocategoria" onClick={() => setCat(c.id, { subs: c.subs.filter((_, j) => j !== i) })}><ITrash /></button>}
+                        {c.subs.length > 1 && <button className="icon-btn" aria-label="Elimina sottocategoria" onClick={() => setCat(c.id, { subs: c.subs.filter((_, j) => j !== i) })}><Trash2 /></button>}
                       </div>
                       <textarea className="input small" rows={2} aria-label="Parole chiave" placeholder="parole chiave separate da virgola" value={s.keywords.join(', ')} onChange={(e) => setCat(c.id, { subs: c.subs.map((x, j) => (j === i ? { ...x, keywords: e.target.value.split(',').map((k) => k.trim()).filter(Boolean) } : x)) })} />
                     </div>
@@ -161,7 +171,7 @@ export function SettingsPage({ email }: { email?: string | null }) {
         <div className="card">
           <div className="row between" style={{ marginBottom: 10 }}>
             <div className="card-title" style={{ margin: 0 }}>Spese ed entrate ricorrenti</div>
-            <button className="btn btn-sm" onClick={() => setNewRec(true)}>+ Ricorrente</button>
+            <button className="btn btn-sm" onClick={() => setRecEdit('new')}>+ Ricorrente</button>
           </div>
           {recurring.length === 0 && <div className="small muted">Nessuna. Aggiungi abbonamenti (Netflix, palestra, telefono…) e verranno registrati in automatico.</div>}
           <div className="list">
@@ -169,14 +179,14 @@ export function SettingsPage({ email }: { email?: string | null }) {
               const c = settings.categories.find((x) => x.id === r.categoryId)
               return (
                 <div className="list-item" key={r.id} style={{ opacity: r.active ? 1 : 0.5 }}>
-                  <span className="cat-icon">{r.type === 'income' ? '💶' : c?.icon ?? '📦'}</span>
+                  {c && r.type === 'expense' ? <CatIcon cat={c} size="sm" /> : <span className="cat-icon sm" style={{ background: 'rgba(70,212,131,.14)' }}>💶</span>}
                   <span className="grow">
                     <span className="bold ellipsis" style={{ display: 'block' }}>{r.description}</span>
-                    <span className="xs muted">{r.frequency === 'monthly' ? `ogni mese il giorno ${r.day}` : `ogni ${WEEKDAYS_SHORT[r.day - 1]}`}{c ? ` · ${c.name}` : ''}</span>
+                    <span className="xs muted">{freqLabel(r)}{c ? ` · ${c.name}` : ''}</span>
                   </span>
                   <span className={`tnum bold ${r.type === 'income' ? 'pos' : ''}`}>{r.type === 'income' ? '+' : '−'}{fmt(r.amount)}</span>
-                  <button className="btn btn-sm" onClick={() => backend.saveRecurring({ ...r, active: !r.active })}>{r.active ? 'Pausa' : 'Attiva'}</button>
-                  <button className="icon-btn" aria-label="Elimina ricorrente" onClick={() => confirm('Eliminare questa ricorrenza? I movimenti già registrati restano.') && backend.deleteRecurring(r.id)}><ITrash /></button>
+                  <button className="icon-btn" aria-label="Modifica ricorrente" onClick={() => setRecEdit(r)}><Pencil /></button>
+                  <button className="icon-btn" aria-label="Elimina ricorrente" onClick={() => confirm('Eliminare questa ricorrenza? I movimenti già registrati restano.') && backend.deleteRecurring(r.id)}><Trash2 /></button>
                 </div>
               )
             })}
@@ -210,13 +220,13 @@ export function SettingsPage({ email }: { email?: string | null }) {
 
         <div className="card row wrap">
           <div className="grow small">{demo ? <>Modalità prova: i dati sono salvati solo in questo browser.</> : <>Accesso come <b>{email}</b></>}</div>
-          {!demo && <button className="btn" onClick={() => logout()}><span style={{ width: 18, height: 18, display: 'inline-flex' }}><ILogout /></span> Esci</button>}
+          {!demo && <button className="btn" onClick={() => logout()}><LogOut /> Esci</button>}
           {demo && <button className="btn btn-danger" onClick={() => { if (confirm('Cancellare tutti i dati della prova?')) { localStorage.removeItem('spese-demo-v1'); location.reload() } }}>Azzera dati prova</button>}
         </div>
       </div>
 
       {dirty && (
-        <div style={{ position: 'sticky', bottom: 'calc(84px + var(--safe-bottom))', marginTop: 16, zIndex: 30 }}>
+        <div style={{ position: 'sticky', bottom: 'calc(92px + var(--safe-bottom))', marginTop: 16, zIndex: 30 }}>
           <div className="card row" style={{ boxShadow: 'var(--shadow)', borderColor: 'rgba(212,180,106,.4)' }}>
             <span className="grow small">Hai modifiche non salvate</span>
             <button className="btn btn-ghost btn-sm" onClick={() => setDraft(settings)}>Annulla</button>
@@ -225,36 +235,45 @@ export function SettingsPage({ email }: { email?: string | null }) {
         </div>
       )}
 
-      {newRec && <RecurringSheet onClose={() => setNewRec(false)} />}
+      {recEdit && <RecurringSheet initial={recEdit === 'new' ? undefined : recEdit} onClose={() => setRecEdit(null)} />}
     </>
   )
 }
 
-function RecurringSheet({ onClose }: { onClose: () => void }) {
+function freqLabel(r: Recurring) {
+  if (r.frequency === 'weekly') return `ogni ${WEEKDAYS_SHORT[r.day - 1]}`
+  if (r.frequency === 'yearly') return `ogni anno il ${r.day} ${MONTHS[(r.month ?? 1) - 1]}`
+  return `ogni mese il giorno ${r.day}`
+}
+
+function RecurringSheet({ onClose, initial }: { onClose: () => void; initial?: Recurring }) {
   const { settings, backend, toast } = useApp()
-  const [type, setType] = useState<'expense' | 'income'>('expense')
-  const [desc, setDesc] = useState('')
-  const [amount, setAmount] = useState('')
-  const [cat, setCat] = useState(`${settings.categories.find((c) => c.id === 'abbonamenti')?.id ?? settings.categories[0].id}|${(settings.categories.find((c) => c.id === 'abbonamenti') ?? settings.categories[0]).subs[0].id}`)
-  const [freq, setFreq] = useState<'monthly' | 'weekly'>('monthly')
-  const [day, setDay] = useState(1)
-  const [method, setMethod] = useState<Exclude<PayMethod, 'buoni'>>('carta')
-  const [source, setSource] = useState(settings.incomeSources[0] ?? 'Stipendio')
-  const [start, setStart] = useState(todayISO())
+  const [type, setType] = useState<'expense' | 'income'>(initial?.type ?? 'expense')
+  const [desc, setDesc] = useState(initial?.description ?? '')
+  const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '')
+  const [month, setMonth] = useState(initial?.month ?? 1)
+  const [active, setActive] = useState(initial?.active ?? true)
+  const [cat, setCat] = useState(initial?.categoryId ? `${initial.categoryId}|${initial.subId}` : `${settings.categories.find((c) => c.id === 'abbonamenti')?.id ?? settings.categories[0].id}|${(settings.categories.find((c) => c.id === 'abbonamenti') ?? settings.categories[0]).subs[0].id}`)
+  const [freq, setFreq] = useState<Recurring['frequency']>(initial?.frequency ?? 'monthly')
+  const [day, setDay] = useState(initial?.day ?? 1)
+  const [method, setMethod] = useState<Exclude<PayMethod, 'buoni'>>(initial?.method === 'contanti' ? 'contanti' : 'carta')
+  const [source, setSource] = useState(initial?.incomeSource ?? settings.incomeSources[0] ?? 'Stipendio')
+  const [start, setStart] = useState(initial?.startDate ?? todayISO())
 
   return (
-    <Sheet title="Nuova ricorrenza" onClose={onClose}>
+    <Sheet title={initial ? 'Modifica ricorrenza' : 'Nuova ricorrenza'} onClose={onClose}>
       <form className="stack" onSubmit={async (e) => {
         e.preventDefault()
         const n = parseAmount(amount)
         if (!desc.trim() || !Number.isFinite(n) || n <= 0) return toast('Compila descrizione e importo')
         const [c, s] = cat.split('|')
         const r: Recurring = {
-          id: uid(), type, description: desc.trim(), amount: round2(n), frequency: freq, day, startDate: start, active: true,
+          id: initial?.id ?? uid(), type, description: desc.trim(), amount: round2(n), frequency: freq, day, startDate: start, active,
+          skip: initial?.skip, month: freq === 'yearly' ? month : undefined,
           ...(type === 'expense' ? { categoryId: c, subId: s, method } : { incomeSource: source }),
         }
         await backend.saveRecurring(r)
-        toast('Ricorrenza creata ✓')
+        toast(initial ? 'Ricorrenza aggiornata ✓' : 'Ricorrenza creata ✓')
         onClose()
       }}>
         <div className="seg full">
@@ -277,22 +296,35 @@ function RecurringSheet({ onClose }: { onClose: () => void }) {
         )}
         <div className="row">
           <div className="field grow"><label>Frequenza</label>
-            <select className="input" value={freq} onChange={(e) => { setFreq(e.target.value as 'monthly' | 'weekly'); setDay(1) }}>
+            <select className="input" value={freq} onChange={(e) => { setFreq(e.target.value as Recurring['frequency']); setDay(1) }}>
               <option value="monthly">Ogni mese</option>
               <option value="weekly">Ogni settimana</option>
+              <option value="yearly">Ogni anno</option>
             </select>
           </div>
-          <div className="field grow"><label>{freq === 'monthly' ? 'Giorno del mese' : 'Giorno'}</label>
+          <div className="field grow"><label>{freq === 'weekly' ? 'Giorno' : 'Giorno del mese'}</label>
             <select className="input" value={day} onChange={(e) => setDay(Number(e.target.value))}>
-              {freq === 'monthly'
+              {freq !== 'weekly'
                 ? Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)
                 : WEEKDAYS_SHORT.map((w, i) => <option key={w} value={i + 1}>{w}</option>)}
             </select>
           </div>
         </div>
+        {freq === 'yearly' && (
+          <div className="field"><label htmlFor="r-m">Mese</label>
+            <select id="r-m" className="input" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+              {MONTHS.map((m, i) => <option key={m} value={i + 1}>{cap(m)}</option>)}
+            </select>
+          </div>
+        )}
         <div className="field"><label htmlFor="r-s">A partire dal</label><input id="r-s" type="date" className="input" value={start} onChange={(e) => setStart(e.target.value)} /></div>
         <span className="xs muted">Se la data di partenza è già passata, i movimenti fino a oggi vengono registrati subito.</span>
-        <button className="btn btn-primary">Crea ricorrenza</button>
+        {initial && (
+          <label className="row small text2" style={{ cursor: 'pointer' }}>
+            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} style={{ width: 18, height: 18, accentColor: '#d4b46a' }} /> Attiva
+          </label>
+        )}
+        <button className="btn btn-primary">{initial ? 'Salva' : 'Crea ricorrenza'}</button>
       </form>
     </Sheet>
   )

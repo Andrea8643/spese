@@ -73,6 +73,8 @@ export interface Settings {
   recapSeen: string[] // mesi di cui è stato mostrato il recap
   /** avanzi che hai deciso di non versare */
   leftoverDismissed?: string[]
+  /** versione degli aggiornamenti automatici applicati */
+  schema?: number
 }
 
 export interface Recurring {
@@ -84,9 +86,11 @@ export interface Recurring {
   subId?: string
   method?: PayMethod
   incomeSource?: string
-  frequency: 'monthly' | 'weekly'
-  /** giorno del mese (1-28) per monthly, giorno settimana (1=lun..7=dom) per weekly */
+  frequency: 'monthly' | 'weekly' | 'yearly'
+  /** giorno del mese (1-31) per monthly/yearly, giorno settimana (1=lun..7=dom) per weekly */
   day: number
+  /** mese (1-12) per yearly */
+  month?: number
   startDate: string
   active: boolean
   /** occorrenze cancellate a mano (da non rigenerare) */
