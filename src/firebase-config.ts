@@ -1,13 +1,12 @@
 // ⚙️ Configurazione Firebase (questi valori NON sono segreti: identificano il progetto.
 // La protezione dei dati è garantita dalle regole di sicurezza di Firestore).
-// Sostituisci i valori con quelli del tuo progetto: Console Firebase → Impostazioni progetto → Le tue app → Web.
 export const firebaseConfig = {
-  apiKey: 'INSERISCI_API_KEY',
-  authDomain: 'INSERISCI.firebaseapp.com',
-  projectId: 'INSERISCI_PROJECT_ID',
-  storageBucket: 'INSERISCI.appspot.com',
-  messagingSenderId: '000000000000',
-  appId: 'INSERISCI_APP_ID',
+  apiKey: 'AIzaSyAMCXevLCfTFr6y02BU3AK9YlSFaJgTMaI',
+  authDomain: 'spese-andrea.firebaseapp.com',
+  projectId: 'spese-andrea',
+  storageBucket: 'spese-andrea.firebasestorage.app',
+  messagingSenderId: '1039714660816',
+  appId: '1:1039714660816:web:91e741fddc8ec04c1ac9d5',
 }
 
 /** L'unico account autorizzato ad accedere all'app. */
