@@ -43,6 +43,7 @@ export function Movements() {
   }, [list])
 
   const total = list.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+  const income = list.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
 
   return (
     <>
@@ -64,7 +65,11 @@ export function Movements() {
             {settings.categories.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
           </select>
         </div>
-        <div className="small muted">{list.length} movimenti · spese totali <b className="tnum" style={{ color: 'var(--text)' }}>{fmt(total)}</b></div>
+        <div className="month-strip">
+          <div><div className="xs muted bold">Uscite</div><div className="bold tnum" style={{ fontSize: 18 }}>{fmt(total)}</div></div>
+          <div><div className="xs muted bold">Entrate</div><div className="bold tnum pos" style={{ fontSize: 18 }}>{fmt(income)}</div></div>
+        </div>
+        <div className="xs muted">{list.length} movimenti{q ? ' trovati' : ''}</div>
       </div>
       {byDay.length === 0 && <div className="empty"><div className="big">🔍</div>Nessun movimento trovato.</div>}
       <div className="stagger">

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { computeBalances, leftoverRef, summarizeMonth } from './finance'
+import { ExportButtons } from './ExportButtons'
 import { LeftoverActions } from './Leftovers'
 import { TxRow } from './TxRow'
 import type { Group } from './types'
@@ -61,6 +62,12 @@ export function Recap({ month, onClose }: { month: string; onClose: () => void }
             su {fmt(s.base)} di entrate{s.incomeIsEstimate ? ' (stimate)' : ''}
             {s.voucherSpent > 0 && <> · {s.vouchersUsed} buoni pasto usati ({fmt(s.voucherSpent)})</>}
           </div>
+        </div>
+
+        <div className="card">
+          <div className="card-title">📥 Scarica il resoconto del mese</div>
+          <ExportButtons month={month} />
+          <div className="xs muted" style={{ marginTop: 8 }}>Tutte le uscite, il riepilogo del budget e il dettaglio per categoria.</div>
         </div>
 
         <GroupCard group="personale" />

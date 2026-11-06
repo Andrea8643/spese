@@ -25,7 +25,6 @@ export const useApp = () => useContext(Ctx)!
 
 export const GROUP_LABEL = { necessita: 'Necessità', personale: 'Personale' } as const
 export const GROUP_COLOR = { necessita: 'var(--needs)', personale: 'var(--personal)' } as const
-export const GROUP_TINT = { necessita: 'rgba(57,135,229,.15)', personale: 'rgba(224,104,47,.15)' } as const
 export const METHOD_LABEL = { carta: 'Carta', bancomat: 'Carta', contanti: 'Contanti', buoni: 'Buoni pasto' } as const
 
 const CAT_ICONS: Record<string, LucideIcon> = {
@@ -34,11 +33,20 @@ const CAT_ICONS: Record<string, LucideIcon> = {
   svago: PartyPopper, abbonamenti: Tv, cura: Scissors, viaggi: Plane, regali: Gift, altro: Package,
 }
 
+/** Un colore diverso per ogni categoria, così si riconoscono a colpo d'occhio. */
+const CAT_COLORS: Record<string, string> = {
+  alimentari: '#34c77b', trasporti: '#f5a524', 'fondo-auto': '#a393ff', salute: '#ff6b8b', telefono: '#38bdf8',
+  ristoranti: '#ff7a45', bar: '#d9a46c', fitness: '#a3e635', abbigliamento: '#f472b6', tecnologia: '#818cf8',
+  svago: '#facc15', abbonamenti: '#f87171', cura: '#2dd4bf', viaggi: '#60a5fa', regali: '#e879f9', altro: '#a1a1aa',
+}
+export const catColor = (cat: Category) => CAT_COLORS[cat.id] ?? GROUP_COLOR[cat.group]
+
 /** Icona della categoria (vettoriale per quelle predefinite, emoji per quelle create da te). */
 export function CatIcon({ cat, size = 'md' }: { cat: Category; size?: 'sm' | 'md' }) {
   const I = CAT_ICONS[cat.id]
+  const c = catColor(cat)
   return (
-    <span className={`cat-icon ${size === 'sm' ? 'sm' : ''}`} style={{ background: GROUP_TINT[cat.group], color: GROUP_COLOR[cat.group] }} aria-hidden="true">
+    <span className={`cat-icon ${size === 'sm' ? 'sm' : ''}`} style={{ background: `color-mix(in srgb, ${c} 17%, transparent)`, color: c }} aria-hidden="true">
       {I ? <I strokeWidth={2.1} /> : cat.icon}
     </span>
   )

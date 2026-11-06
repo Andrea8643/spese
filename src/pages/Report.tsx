@@ -2,9 +2,10 @@ import { ChevronDown, ClipboardList } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { AllocationBar, DailyBars } from '../charts'
 import { summarizeMonth, summarizePeriod, type CatSummary } from '../finance'
+import { ExportButtons } from '../ExportButtons'
 import { Recap } from '../Recap'
 import type { Group } from '../types'
-import { CatIcon, GROUP_COLOR, GROUP_LABEL, Money, PeriodNav, useApp } from '../ui'
+import { CatIcon, catColor, GROUP_COLOR, GROUP_LABEL, Money, PeriodNav, useApp } from '../ui'
 import { addDays, addMonths, currentMonth, daysInMonth, fmt, fmt0, monthLabel, todayISO, weekLabel, weekStart } from '../utils'
 
 export function Report() {
@@ -59,6 +60,8 @@ export function Report() {
             <div className="kv total"><span>Saldo</span><span className={balance < 0 ? 'neg' : 'pos'}>{fmt(balance)}</span></div>
             <div className="kv"><span>{ms.closed ? 'Avanzato (Personale + Necessità)' : 'Ancora da spendere (Pers. + Nec.)'}</span><span className={ms.personalLeft + ms.needsLeft < 0 ? 'neg' : ''}>{fmt(ms.personalLeft + ms.needsLeft)}</span></div>
             <button className="btn btn-block" style={{ marginTop: 12 }} onClick={() => setRecap(true)}><ClipboardList /> Recap del mese</button>
+            <div className="xs muted" style={{ margin: '14px 0 8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Scarica il resoconto di {monthLabel(month, false).toLowerCase()}</div>
+            <ExportButtons month={month} />
           </div>
         )}
 
@@ -113,7 +116,7 @@ function Breakdown({ group, cats, total, showBudget }: { group: Group; cats: Cat
                     </span>
                   </div>
                   <div className="progress" style={{ height: 6 }}>
-                    <span style={{ width: `${(c.spentTotal / max) * 100}%`, background: GROUP_COLOR[group] }} />
+                    <span style={{ width: `${(c.spentTotal / max) * 100}%`, background: catColor(c.cat) }} />
                   </div>
                 </div>
                 <ChevronDown size={16} className="muted" />

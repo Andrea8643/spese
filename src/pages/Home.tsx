@@ -5,7 +5,7 @@ import { PendingLeftovers } from '../Leftovers'
 import { Recap } from '../Recap'
 import { TxRow } from '../TxRow'
 import type { Group } from '../types'
-import { BudgetBadge, CatIcon, GROUP_COLOR, Money, PeriodNav, Progress, Ring, useApp } from '../ui'
+import { BudgetBadge, CatIcon, catColor, Money, PeriodNav, Progress, Ring, useApp } from '../ui'
 import { addMonths, currentMonth, fmt, fmt0, monthLabel } from '../utils'
 
 export function Home() {
@@ -18,7 +18,7 @@ export function Home() {
   const b = useMemo(() => computeBalances(settings, txs), [settings, txs])
   const p = pace(s.personalLeft, month)
   const isCurrent = month === currentMonth()
-  const recent = txs.filter((t) => t.date.startsWith(month)).slice(0, 5)
+  const recent = txs.filter((t) => t.date.startsWith(month)).slice(0, 6)
   const usedPct = s.personalBudget > 0 ? Math.round((s.personalSpent / s.personalBudget) * 100) : 0
 
   const cats = s.categories
@@ -72,26 +72,8 @@ export function Home() {
         <div className="grid grid-tiles four">
           <Tile icon={<ShoppingCart />} color="var(--needs)" label="Necessità" value={s.needsLeft} sub={`rimaste · spese ${fmt0(s.needsSpent)}/${fmt0(s.needsOperative)}`} />
           <Tile icon={<Car />} color="#9085e9" label="Fondo auto" value={b.fund} sub={`+${fmt0(s.fundQuota)} al mese`} onClick={() => go('risparmi')} />
-          <Tile icon={<Ticket />} color="var(--accent)" label="Buoni pasto" value={b.vouchers} format={(n) => `${Math.round(n)} buoni`} sub={`= ${fmt(b.vouchersValue)}`} onClick={() => go('risparmi')} />
           <Tile icon={<PiggyBank />} color="var(--savings)" label="Risparmi" value={b.savings} format={fmt0} sub={isCurrent ? `+${fmt0(s.savingsAlloc)} a fine mese` : 'saldo attuale'} onClick={() => go('risparmi')} />
-        </div>
-
-        <div className="card">
-          <div className="row between" style={{ marginBottom: 14 }}>
-            <div className="card-title" style={{ margin: 0 }}>Budget per categoria</div>
-            <div className="seg">
-              <button className={group === 'personale' ? 'on' : ''} onClick={() => setGroup('personale')}>Personale</button>
-              <button className={group === 'necessita' ? 'on' : ''} onClick={() => setGroup('necessita')}>Necessità</button>
-            </div>
-          </div>
-          <div className="stack" style={{ gap: 16 }} key={group}>
-            {visible.map((c) => <CatRow key={c.cat.id} c={c} />)}
-          </div>
-          {cats.length > 5 && (
-            <button className="btn btn-ghost btn-sm btn-block" style={{ marginTop: 10 }} onClick={() => setShowAll(!showAll)}>
-              {showAll ? 'Mostra meno' : `Mostra tutte (${cats.length})`}
-            </button>
-          )}
+          <Tile icon={<Ticket />} color="var(--accent)" label="Buoni pasto" value={b.vouchers} format={(n) => `${Math.round(n)} buoni`} sub={`= ${fmt(b.vouchersValue)}`} onClick={() => go('risparmi')} />
         </div>
 
         <div>
@@ -111,6 +93,24 @@ export function Home() {
             )}
           </div>
         </div>
+        <div className="card">
+          <div className="row between" style={{ marginBottom: 14 }}>
+            <div className="card-title" style={{ margin: 0 }}>Budget per categoria</div>
+            <div className="seg">
+              <button className={group === 'personale' ? 'on' : ''} onClick={() => setGroup('personale')}>Personale</button>
+              <button className={group === 'necessita' ? 'on' : ''} onClick={() => setGroup('necessita')}>Necessità</button>
+            </div>
+          </div>
+          <div className="stack" style={{ gap: 16 }} key={group}>
+            {visible.map((c) => <CatRow key={c.cat.id} c={c} />)}
+          </div>
+          {cats.length > 5 && (
+            <button className="btn btn-ghost btn-sm btn-block" style={{ marginTop: 10 }} onClick={() => setShowAll(!showAll)}>
+              {showAll ? 'Mostra meno' : `Mostra tutte (${cats.length})`}
+            </button>
+          )}
+        </div>
+
       </div>
       {recapMonth && <Recap month={recapMonth} onClose={() => openRecap(null)} />}
     </>
@@ -149,7 +149,7 @@ function CatRow({ c }: { c: CatSummary }) {
         </div>
         {c.cat.fund
           ? <div className="xs muted">+{fmt0(c.budget)} al mese nel fondo · le spese auto non toccano il budget</div>
-          : <Progress value={c.spentEuro} max={c.budget} color={GROUP_COLOR[c.cat.group]} />}
+          : <Progress value={c.spentEuro} max={c.budget} color={catColor(c.cat)} />}
         {c.spentTotal > c.spentEuro && <div className="xs muted" style={{ marginTop: 4 }}>+ {fmt(c.spentTotal - c.spentEuro)} con buoni pasto</div>}
       </div>
     </div>

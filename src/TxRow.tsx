@@ -1,7 +1,7 @@
 import { catOf, euroPart } from './finance'
 import { ArrowDownToLine, ArrowUpFromLine, Banknote, Car, Repeat, Ticket } from 'lucide-react'
 import type { Tx } from './types'
-import { CatIcon, METHOD_LABEL, useApp } from './ui'
+import { CatIcon, catColor, METHOD_LABEL, useApp } from './ui'
 import { dayLabel, fmt } from './utils'
 
 export function TxRow({ tx, showDate }: { tx: Tx; showDate?: boolean }) {
@@ -14,9 +14,8 @@ export function TxRow({ tx, showDate }: { tx: Tx; showDate?: boolean }) {
   let cls = ''
   if (tx.type === 'expense') {
     const cat = catOf(settings.categories, tx.categoryId)
-    const sub = cat.subs.find((s) => s.id === tx.subId)
     icon = <CatIcon cat={cat} />
-    subtitle = `${cat.name}${sub ? ' › ' + sub.name : ''}`
+    subtitle = cat.name
     amount = `−${fmt(tx.amount)}`
   } else if (tx.type === 'income') {
     icon = <span className="cat-icon" style={{ background: 'rgba(70,212,131,.14)', color: 'var(--good-text)' }}><Banknote /></span>
@@ -36,24 +35,25 @@ export function TxRow({ tx, showDate }: { tx: Tx; showDate?: boolean }) {
   }
   const Tag = clickable ? 'button' : 'div'
   const euro = euroPart(tx, settings.voucherValue)
+  const cat = tx.type === 'expense' ? catOf(settings.categories, tx.categoryId) : null
   return (
-    <Tag className="list-item" onClick={clickable ? () => openAdd(tx) : undefined}>
+    <Tag className="list-item tx" onClick={clickable ? () => openAdd(tx) : undefined}>
       {icon}
-      <span className="grow">
-        <span className="ellipsis bold" style={{ display: 'block' }}>{title}</span>
-        <span className="xs muted ellipsis" style={{ display: 'block' }}>
-          {subtitle}
-          {showDate && ` · ${dayLabel(tx.date)}`}
+      <span className="grow" style={{ minWidth: 0 }}>
+        <span className="tx-title ellipsis">{title}</span>
+        <span className="tx-sub ellipsis">
+          <span style={{ color: cat ? catColor(cat) : undefined, fontWeight: 700 }}>{subtitle}</span>
+          {showDate && <span className="muted"> · {dayLabel(tx.date)}</span>}
         </span>
       </span>
-      <span style={{ textAlign: 'right' }}>
-        <span className={`tnum bold ${cls}`} style={{ display: 'block' }}>{amount}</span>
-        <span className="row gap-s" style={{ justifyContent: 'flex-end', marginTop: 2 }}>
+      <span className="tx-right">
+        <span className={`tx-amount tnum ${cls}`}>{amount}</span>
+        <span className="tx-meta">
           {tx.recurringId && <span className="badge badge-muted" title="Ricorrente"><Repeat size={11} /></span>}
           {tx.type === 'expense' && !!tx.vouchers && (
             <span className="badge badge-voucher">🎟 {tx.vouchers}{euro > 0 ? ` + ${fmt(euro)}` : ''}</span>
           )}
-          {tx.type === 'expense' && !tx.vouchers && tx.method && <span className="xs muted">{METHOD_LABEL[tx.method]}</span>}
+          {tx.type === 'expense' && !tx.vouchers && tx.method && <span>{METHOD_LABEL[tx.method]}</span>}
         </span>
       </span>
     </Tag>
