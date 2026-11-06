@@ -39,7 +39,11 @@ export function Savings() {
           <div className="hero-label">💰 Risparmi accumulati</div>
           <div className="hero-value tnum">{fmt(b.savings)}</div>
           <div className="small text2">
-            A fine {monthLabel(currentMonth(), false).toLowerCase()} saranno circa <b className="tnum pos">{fmt(b.savingsProjected)}</b> (+{fmt0(cur.toSavings)})
+            Questo mese entreranno sicuramente <b className="tnum pos">{fmt(cur.savingsAlloc)}</b> (quota {settings.allocation.savingsPct}%{cur.incomeIsEstimate ? ' sullo stipendio stimato' : ''})
+            {cur.needsLeft + cur.personalLeft !== 0 && (
+              <>, più quello che avanzerà di Necessità e Personale: oggi <b className="tnum">{fmt(cur.needsLeft + cur.personalLeft)}</b>, ma scende man mano che spendi</>
+            )}.
+            <div className="xs muted" style={{ marginTop: 6 }}>Massimo a fine {monthLabel(currentMonth(), false).toLowerCase()}, se non spendi più nulla: {fmt(b.savingsProjected)}</div>
           </div>
           <div className="row wrap" style={{ marginTop: 16 }}>
             <button className="btn btn-sm btn-primary" onClick={() => setMove('saving_in')}>+ Versa</button>

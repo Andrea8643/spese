@@ -69,7 +69,7 @@ export function Home() {
           <button className="tile" style={{ textAlign: 'left' }} onClick={() => go('risparmi')}>
             <div className="tile-label"><span className="dot" style={{ background: 'var(--savings)' }} /> Risparmi</div>
             <div className="tile-value tnum">{fmt0(b.savings)}</div>
-            <div className="tile-sub tnum">{isCurrent ? `a fine mese ≈ ${fmt0(b.savingsProjected)}` : 'totale accumulato'}</div>
+            <div className="tile-sub tnum">{isCurrent ? `+${fmt0(s.savingsAlloc)} sicuri a fine mese` : 'totale accumulato'}</div>
           </button>
         </div>
       </div>
@@ -87,7 +87,7 @@ export function Home() {
           ]}
         />
         <div className="small text2" style={{ marginTop: 12 }}>
-          A fine mese andranno nei risparmi <b className="tnum pos">{fmt(s.toSavings)}</b>: la quota di {fmt0(s.savingsAlloc)} + quello che non spendi di Necessità e Personale.
+          A fine mese vanno nei risparmi la quota di <b className="tnum pos">{fmt0(s.savingsAlloc)}</b> più quello che non spendi di Necessità e Personale (oggi ancora {fmt(s.needsLeft + s.personalLeft)}, cala man mano che spendi).
         </div>
       </div>
 
