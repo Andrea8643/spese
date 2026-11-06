@@ -89,4 +89,4 @@ export function useToast() {
 
 export const GROUP_LABEL = { necessita: 'Necessità', personale: 'Personale' } as const
 export const GROUP_COLOR = { necessita: 'var(--needs)', personale: 'var(--personal)' } as const
-export const METHOD_LABEL = { carta: 'Carta', bancomat: 'Bancomat', contanti: 'Contanti', buoni: 'Buoni pasto' } as const
+export const METHOD_LABEL = { carta: 'Carta', bancomat: 'Carta', contanti: 'Contanti', buoni: 'Buoni pasto' } as const

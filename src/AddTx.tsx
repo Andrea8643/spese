@@ -1,31 +1,32 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { learnKey, suggestCategory } from './categorize'
-import { catOf, computeBalances } from './finance'
+import { learnEntries, suggestCategory } from './categorize'
+import { catOf, computeBalances, euroPart } from './finance'
 import { ISpark, ITrash } from './icons'
-import type { PayMethod, Recurring, Tx } from './types'
-import { GROUP_LABEL, METHOD_LABEL, Sheet, useApp } from './ui'
+import type { Category, Recurring, Tx } from './types'
+import { GROUP_LABEL, Sheet, useApp } from './ui'
 import { addDays, fmt, parseAmount, parseISO, round2, todayISO, uid } from './utils'
 
 type Mode = 'expense' | 'income' | 'voucher_in'
+type EuroMethod = 'carta' | 'contanti'
 
 export function AddTx({ initial, onClose }: { initial?: Partial<Tx>; onClose: () => void }) {
   const { settings, learned, backend, toast, txs, recurring } = useApp()
   const editing = !!initial?.id
-  const [mode, setMode] = useState<Mode>((initial?.type as Mode) && ['expense', 'income', 'voucher_in'].includes(initial!.type!) ? (initial!.type as Mode) : 'expense')
+  const vValue = settings.voucherValue
+  const [mode, setMode] = useState<Mode>(initial?.type && ['expense', 'income', 'voucher_in'].includes(initial.type) ? (initial.type as Mode) : 'expense')
   const [desc, setDesc] = useState(initial?.description ?? '')
-  const [amountStr, setAmountStr] = useState(initial?.amount ? String(initial.amount).replace('.', ',') : '')
+  const [amountStr, setAmountStr] = useState(initial?.amount && !initial?.vouchers ? String(initial.amount).replace('.', ',') : '')
   const [date, setDate] = useState(initial?.date ?? todayISO())
   const [catSel, setCatSel] = useState(initial?.categoryId ? `${initial.categoryId}|${initial.subId ?? ''}` : '')
   const [manualCat, setManualCat] = useState(editing)
+  const [picking, setPicking] = useState(false)
   const [payKind, setPayKind] = useState<'euro' | 'buoni'>(initial?.vouchers ? 'buoni' : 'euro')
-  const [euroMethod, setEuroMethod] = useState<Exclude<PayMethod, 'buoni'>>(
-    initial?.method && initial.method !== 'buoni' ? initial.method : 'carta',
-  )
+  const [euroMethod, setEuroMethod] = useState<EuroMethod>(initial?.method === 'contanti' ? 'contanti' : 'carta')
   const [vouchers, setVouchers] = useState<number>(initial?.vouchers ?? 1)
-  const [vouchersTouched, setVouchersTouched] = useState(editing)
+  const [restStr, setRestStr] = useState(initial?.vouchers ? String(euroPart(initial as Tx, vValue)).replace('.', ',') : '')
   const [source, setSource] = useState(initial?.incomeSource ?? settings.incomeSources[0] ?? 'Stipendio')
   const [voucherIn, setVoucherIn] = useState(initial?.type === 'voucher_in' ? initial.vouchers ?? 20 : 20)
-  const [voucherValue, setVoucherValue] = useState(String(initial?.voucherValue ?? settings.voucherValue).replace('.', ','))
+  const [voucherValue, setVoucherValue] = useState(String(initial?.voucherValue ?? vValue).replace('.', ','))
   const [repeat, setRepeat] = useState(false)
   const [saving, setSaving] = useState(false)
   const descRef = useRef<HTMLInputElement>(null)
@@ -34,32 +35,39 @@ export function AddTx({ initial, onClose }: { initial?: Partial<Tx>; onClose: ()
     if (!editing) setTimeout(() => descRef.current?.focus(), 250)
   }, [editing])
 
-  const vValue = settings.voucherValue
   const balances = useMemo(() => computeBalances(settings, txs), [settings, txs])
   const vouchersAvailable = balances.vouchers + (editing ? initial?.vouchers ?? 0 : 0)
 
   // importo scritto in fondo alla descrizione ("burger king 12,50")
   const trailing = desc.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:€|eur|euro)?\s*$/i)
-  const amount = amountStr ? parseAmount(amountStr) : trailing ? parseAmount(trailing[1]) : NaN
+  const typedAmount = amountStr ? parseAmount(amountStr) : trailing ? parseAmount(trailing[1]) : NaN
   const cleanDesc = (amountStr || !trailing ? desc : desc.slice(0, trailing.index)).trim()
 
+  // riconoscimento automatico mentre scrivi
   const suggestion = useMemo(() => suggestCategory(cleanDesc, settings.categories, learned), [cleanDesc, settings.categories, learned])
   useEffect(() => {
     if (mode === 'expense' && !manualCat) setCatSel(suggestion ? `${suggestion.categoryId}|${suggestion.subId}` : '')
   }, [suggestion, manualCat, mode])
 
-  // numero di buoni proposto: un buono ogni 8 € (gli spiccioli si pagano in euro)
-  useEffect(() => {
-    if (payKind !== 'buoni' || vouchersTouched || !Number.isFinite(amount)) return
-    const n = Math.max(1, Math.floor(round2(amount) / vValue))
-    setVouchers(Math.max(1, Math.min(n, Math.max(1, vouchersAvailable))))
-  }, [amount, payKind, vouchersTouched, vValue, vouchersAvailable])
-
   const [catId, subId] = catSel.split('|')
   const cat = catSel ? catOf(settings.categories, catId) : null
-  const voucherCover = payKind === 'buoni' && Number.isFinite(amount) ? Math.min(amount, vouchers * vValue) : 0
-  const euroRest = Number.isFinite(amount) ? round2(Math.max(0, amount - voucherCover)) : 0
-  const wasted = payKind === 'buoni' && Number.isFinite(amount) ? round2(Math.max(0, vouchers * vValue - amount)) : 0
+  const sub = cat?.subs.find((s) => s.id === subId)
+
+  // pagamento con buoni: totale = buoni × valore + resto in euro
+  const rest = restStr ? parseAmount(restStr) : 0
+  const amount = payKind === 'buoni' ? round2(vouchers * vValue + (Number.isFinite(rest) ? rest : 0)) : typedAmount
+
+  function chooseBuoni() {
+    if (payKind === 'buoni') return
+    setPayKind('buoni')
+    // se avevi già scritto l'importo, propone buoni + resto (17 € → 2 buoni + 1 €)
+    if (Number.isFinite(typedAmount) && typedAmount > 0) {
+      const n = Math.max(1, Math.floor(round2(typedAmount) / vValue))
+      setVouchers(n)
+      const r = round2(Math.max(0, typedAmount - n * vValue))
+      setRestStr(r ? String(r).replace('.', ',') : '')
+    }
+  }
 
   async function save() {
     if (saving) return
@@ -67,23 +75,25 @@ export function AddTx({ initial, onClose }: { initial?: Partial<Tx>; onClose: ()
     const id = initial?.id ?? uid()
     const base = { id, date, createdAt: initial?.createdAt ?? Date.now(), recurringId: initial?.recurringId }
     if (mode === 'expense') {
-      if (!Number.isFinite(amount) || amount <= 0) return toast('Inserisci un importo valido')
       if (!cleanDesc) return toast('Scrivi cosa hai comprato')
-      if (!catSel) return toast('Scegli una categoria')
+      if (!Number.isFinite(amount) || amount <= 0) return toast(payKind === 'buoni' ? 'Controlla buoni e resto' : 'Inserisci un importo valido')
+      if (payKind === 'buoni' && !Number.isFinite(rest)) return toast('Resto in euro non valido')
+      if (!catSel || !subId) {
+        setPicking(true)
+        return toast('Scegli una categoria')
+      }
+      const r = payKind === 'buoni' ? round2(rest || 0) : 0
       tx = {
         ...base, type: 'expense', description: cleanDesc, amount: round2(amount), categoryId: catId, subId,
-        method: payKind === 'buoni' ? (euroRest > 0 ? euroMethod : 'buoni') : euroMethod,
+        method: payKind === 'buoni' ? (r > 0 ? euroMethod : 'buoni') : euroMethod,
         vouchers: payKind === 'buoni' ? vouchers : undefined,
         voucherValue: payKind === 'buoni' ? vValue : undefined,
       }
-      // impara la categoria per la prossima volta
-      const key = learnKey(cleanDesc)
-      if (key && (manualCat || !suggestion || suggestion.source === 'learned') && (learned[key]?.c !== catId || learned[key]?.s !== subId)) {
-        void backend.saveLearned({ ...learned, [key]: { c: catId, s: subId } })
-      }
+      // se hai scelto tu la categoria, l'app se la ricorda (frase e singole parole)
+      if (manualCat) void backend.saveLearned({ ...learned, ...learnEntries(cleanDesc, catId, subId) })
     } else if (mode === 'income') {
-      if (!Number.isFinite(amount) || amount <= 0) return toast('Inserisci un importo valido')
-      tx = { ...base, type: 'income', description: cleanDesc || source, amount: round2(amount), incomeSource: source }
+      if (!Number.isFinite(typedAmount) || typedAmount <= 0) return toast('Inserisci un importo valido')
+      tx = { ...base, type: 'income', description: cleanDesc || source, amount: round2(typedAmount), incomeSource: source }
     } else {
       const v = parseAmount(voucherValue)
       if (!voucherIn || voucherIn <= 0 || !Number.isFinite(v)) return toast('Controlla numero e valore dei buoni')
@@ -93,14 +103,14 @@ export function AddTx({ initial, onClose }: { initial?: Partial<Tx>; onClose: ()
     try {
       await backend.saveTxs([tx])
       if (repeat && !editing && (mode === 'expense' || mode === 'income')) {
-        const r: Recurring = {
+        const rec: Recurring = {
           id: uid(), type: mode, description: tx.description, amount: tx.amount, categoryId: tx.categoryId, subId: tx.subId,
           method: tx.method === 'buoni' ? 'carta' : tx.method, incomeSource: tx.incomeSource, frequency: 'monthly',
           day: Math.min(28, parseISO(date).getDate()), startDate: addDays(date, 1), active: true,
         }
-        await backend.saveRecurring(r)
+        await backend.saveRecurring(rec)
       }
-      toast(editing ? 'Modificato ✓' : mode === 'expense' ? `Spesa salvata in ${cat?.name ?? ''} ✓` : 'Salvato ✓')
+      toast(editing ? 'Modificato ✓' : mode === 'expense' ? `Salvata in ${cat?.name ?? ''} ✓` : 'Salvato ✓')
       onClose()
     } finally {
       setSaving(false)
@@ -118,18 +128,16 @@ export function AddTx({ initial, onClose }: { initial?: Partial<Tx>; onClose: ()
     onClose()
   }
 
-  const necessita = settings.categories.filter((c) => c.group === 'necessita')
-  const personale = settings.categories.filter((c) => c.group === 'personale')
+  const amountField = (label: string) => (
+    <div className="field">
+      <label htmlFor="amt">{label}</label>
+      <input id="amt" className="input input-amount tnum" inputMode="decimal" placeholder={trailing && mode !== 'voucher_in' ? trailing[1] : '0,00'} value={amountStr} onChange={(e) => setAmountStr(e.target.value)} />
+    </div>
+  )
 
   return (
     <Sheet title={editing ? 'Modifica movimento' : 'Nuovo movimento'} onClose={onClose}>
-      <form
-        className="stack"
-        onSubmit={(e) => {
-          e.preventDefault()
-          void save()
-        }}
-      >
+      <form className="stack" onSubmit={(e) => { e.preventDefault(); void save() }}>
         {!editing && (
           <div className="seg full">
             <button type="button" className={mode === 'expense' ? 'on' : ''} onClick={() => setMode('expense')}>Spesa</button>
@@ -142,89 +150,87 @@ export function AddTx({ initial, onClose }: { initial?: Partial<Tx>; onClose: ()
           <>
             <div className="field">
               <label htmlFor="desc">Cosa hai comprato?</label>
-              <input id="desc" ref={descRef} className="input" placeholder="es. Burger King, Conad, Coca Zero macchinetta…" value={desc} onChange={(e) => setDesc(e.target.value)} autoComplete="off" />
-            </div>
-            <div className="field">
-              <label htmlFor="amt">Importo totale</label>
-              <input id="amt" className="input input-amount tnum" inputMode="decimal" placeholder={trailing ? trailing[1] : '0,00'} value={amountStr} onChange={(e) => setAmountStr(e.target.value)} />
+              <input id="desc" ref={descRef} className="input" placeholder="es. 2 felpe New Yorker, Burger King, Conad…" value={desc} onChange={(e) => setDesc(e.target.value)} autoComplete="off" />
             </div>
 
-            {suggestion && !manualCat && cat && (
-              <div className="suggest">
-                <ISpark />
-                <span className="grow">
-                  Riconosciuto: <b>{GROUP_LABEL[cat.group]} › {cat.name}</b>
-                  {subId && <> › {cat.subs.find((s) => s.id === subId)?.name}</>}
+            {/* categoria: scelta in automatico, si cambia solo se sbagliata */}
+            {!picking && (cat && sub ? (
+              <div className={manualCat ? 'split' : 'suggest'} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 22 }}>{cat.icon}</span>
+                <span className="grow" style={{ minWidth: 0 }}>
+                  <span className="xs muted" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {!manualCat && <span style={{ width: 13, height: 13, display: 'inline-flex', color: 'var(--accent)' }}><ISpark /></span>}
+                    {manualCat ? 'Categoria' : 'Riconosciuta in automatico'} · {GROUP_LABEL[cat.group]}
+                  </span>
+                  <span className="bold" style={{ display: 'block' }}>{cat.name} › {sub.name}</span>
                 </span>
+                <button type="button" className="btn btn-sm" onClick={() => setPicking(true)}>Cambia</button>
               </div>
+            ) : cleanDesc ? (
+              <div className="split" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="grow small text2">Non l'ho riconosciuto: scegli tu la categoria, la prossima volta me lo ricordo.</span>
+                <button type="button" className="btn btn-sm btn-primary" onClick={() => setPicking(true)}>Scegli</button>
+              </div>
+            ) : null)}
+            {picking && (
+              <CategoryPicker
+                categories={settings.categories}
+                value={catSel}
+                onPick={(v) => { setCatSel(v); setManualCat(true); setPicking(false) }}
+                onCancel={() => setPicking(false)}
+              />
             )}
-            <div className="field">
-              <label htmlFor="cat">Categoria</label>
-              <select id="cat" className="input" value={catSel} onChange={(e) => { setCatSel(e.target.value); setManualCat(true) }}>
-                <option value="">— scegli —</option>
-                {[['🛒 Necessità', necessita], ['🎯 Personale', personale]].map(([label, list]) => (
-                  <optgroup key={label as string} label={label as string}>
-                    {(list as typeof necessita).flatMap((c) =>
-                      c.subs.map((s) => (
-                        <option key={`${c.id}|${s.id}`} value={`${c.id}|${s.id}`}>
-                          {c.icon} {c.name} › {s.name}
-                        </option>
-                      )),
-                    )}
-                  </optgroup>
-                ))}
-              </select>
-              {cat?.fund && <span className="xs muted">🚗 Questa spesa viene pagata dal Fondo auto, non dal budget del mese.</span>}
-            </div>
 
             <div className="field">
               <label>Come hai pagato?</label>
               <div className="chips">
-                {(['carta', 'bancomat', 'contanti'] as const).map((m) => (
+                {(['carta', 'contanti'] as const).map((m) => (
                   <button type="button" key={m} className={`chip ${payKind === 'euro' && euroMethod === m ? 'on' : ''}`} onClick={() => { setPayKind('euro'); setEuroMethod(m) }}>
-                    {METHOD_LABEL[m]}
+                    {m === 'carta' ? '💳 Carta' : '💶 Contanti'}
                   </button>
                 ))}
-                <button type="button" className={`chip ${payKind === 'buoni' ? 'on' : ''}`} onClick={() => setPayKind('buoni')}>
-                  🎟️ Buoni pasto
-                </button>
+                <button type="button" className={`chip ${payKind === 'buoni' ? 'on' : ''}`} onClick={chooseBuoni}>🎟️ Buoni pasto</button>
               </div>
             </div>
+
+            {payKind === 'euro' && amountField('Importo')}
 
             {payKind === 'buoni' && (
               <div className="split">
                 <div className="row between">
                   <div>
-                    <div className="bold">Buoni usati</div>
-                    <div className="xs muted">{vValue.toLocaleString('it-IT')} € l'uno · disponibili: {vouchersAvailable}</div>
+                    <div className="bold">Buoni pasto</div>
+                    <div className="xs muted">{fmt(vValue)} l'uno · ne hai {vouchersAvailable}</div>
                   </div>
                   <div className="stepper">
-                    <button type="button" onClick={() => { setVouchersTouched(true); setVouchers((v) => Math.max(1, v - 1)) }} aria-label="Meno buoni">−</button>
+                    <button type="button" onClick={() => setVouchers((v) => Math.max(1, v - 1))} aria-label="Meno buoni">−</button>
                     <span className="val tnum">{vouchers}</span>
-                    <button type="button" onClick={() => { setVouchersTouched(true); setVouchers((v) => v + 1) }} aria-label="Più buoni">+</button>
+                    <button type="button" onClick={() => setVouchers((v) => v + 1)} aria-label="Più buoni">+</button>
                   </div>
                 </div>
                 <div className="row between small">
-                  <span className="text2">Pagato con buoni</span>
-                  <span className="tnum bold">{fmt(voucherCover)}</span>
+                  <span className="text2">{vouchers} {vouchers === 1 ? 'buono' : 'buoni'} × {fmt(vValue)}</span>
+                  <span className="tnum bold">{fmt(vouchers * vValue)}</span>
                 </div>
-                <div className="row between small">
-                  <span className="text2">Resto pagato in euro</span>
-                  <span className="tnum bold">{fmt(euroRest)}</span>
+                <div className="field">
+                  <label htmlFor="rest">Resto pagato in euro (se c'è)</label>
+                  <input id="rest" className="input tnum" inputMode="decimal" placeholder="0,00" value={restStr} onChange={(e) => setRestStr(e.target.value)} />
                 </div>
-                {euroRest > 0 && (
+                {rest > 0 && (
                   <div className="chips">
-                    {(['bancomat', 'carta', 'contanti'] as const).map((m) => (
+                    {(['carta', 'contanti'] as const).map((m) => (
                       <button type="button" key={m} className={`chip ${euroMethod === m ? 'on' : ''}`} onClick={() => setEuroMethod(m)}>
-                        {METHOD_LABEL[m]}
+                        {m === 'carta' ? '💳 Resto con carta' : '💶 Resto in contanti'}
                       </button>
                     ))}
                   </div>
                 )}
-                {euroRest === 0 && Number.isFinite(amount) && <span className="xs pos">✓ Pagato interamente con i buoni</span>}
-                {wasted > 0 && <span className="xs" style={{ color: 'var(--warning)' }}>⚠ Il buono vale più della spesa: {fmt(wasted)} non utilizzati.</span>}
+                <div className="row between" style={{ borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                  <span className="bold">Totale spesa</span>
+                  <span className="tnum bold" style={{ fontSize: 18 }}>{Number.isFinite(amount) ? fmt(amount) : '—'}</span>
+                </div>
                 {vouchers > vouchersAvailable && <span className="xs neg">⚠ Stai usando più buoni di quelli che risultano disponibili.</span>}
-                <span className="xs muted">Al budget in euro conta solo il resto ({fmt(euroRest)}); i buoni scalano dal saldo buoni.</span>
+                <span className="xs muted">Al budget in euro conta solo il resto; i buoni scalano dal saldo buoni.</span>
               </div>
             )}
           </>
@@ -240,15 +246,12 @@ export function AddTx({ initial, onClose }: { initial?: Partial<Tx>; onClose: ()
                 ))}
               </div>
             </div>
-            <div className="field">
-              <label htmlFor="amt">Importo</label>
-              <input id="amt" className="input input-amount tnum" inputMode="decimal" placeholder="0,00" value={amountStr} onChange={(e) => setAmountStr(e.target.value)} />
-            </div>
+            {amountField('Importo')}
             <div className="field">
               <label htmlFor="desc">Nota (facoltativa)</label>
               <input id="desc" ref={descRef} className="input" placeholder="es. Stipendio ottobre" value={desc} onChange={(e) => setDesc(e.target.value)} />
             </div>
-            <span className="xs muted">Il budget del mese viene calcolato sulle entrate registrate nel mese: {settings.allocation.savingsPct}% risparmi, {settings.allocation.needsPct}% necessità, {settings.allocation.personalPct}% personale.</span>
+            <span className="xs muted">Il budget del mese si calcola sulle entrate registrate nel mese: {settings.allocation.savingsPct}% risparmi, {settings.allocation.needsPct}% necessità, {settings.allocation.personalPct}% personale.</span>
           </>
         )}
 
@@ -293,9 +296,7 @@ export function AddTx({ initial, onClose }: { initial?: Partial<Tx>; onClose: ()
 
         <div className="row" style={{ marginTop: 4 }}>
           {editing && (
-            <button type="button" className="btn btn-danger" onClick={remove} aria-label="Elimina">
-              <ITrash /> Elimina
-            </button>
+            <button type="button" className="btn btn-danger" onClick={remove} aria-label="Elimina"><ITrash /> Elimina</button>
           )}
           <button type="submit" className="btn btn-primary grow" disabled={saving}>
             {saving ? 'Salvataggio…' : editing ? 'Salva modifiche' : 'Aggiungi'}
@@ -303,5 +304,46 @@ export function AddTx({ initial, onClose }: { initial?: Partial<Tx>; onClose: ()
         </div>
       </form>
     </Sheet>
+  )
+}
+
+/** Griglia di categorie con icone, poi sottocategorie. */
+function CategoryPicker({ categories, value, onPick, onCancel }: { categories: Category[]; value: string; onPick: (v: string) => void; onCancel: () => void }) {
+  const [open, setOpen] = useState<string | null>(value ? value.split('|')[0] : null)
+  const openCat = categories.find((c) => c.id === open)
+  return (
+    <div className="split" style={{ gap: 12 }}>
+      <div className="row between">
+        <span className="bold">Scegli la categoria</span>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>Annulla</button>
+      </div>
+      {(['personale', 'necessita'] as const).map((g) => (
+        <div key={g}>
+          <div className="xs muted" style={{ marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.05em', fontWeight: 650 }}>{GROUP_LABEL[g]}</div>
+          <div className="cat-grid">
+            {categories.filter((c) => c.group === g).map((c) => (
+              <button
+                type="button"
+                key={c.id}
+                className={`cat-tile ${open === c.id ? 'on' : ''}`}
+                onClick={() => (c.subs.length === 1 ? onPick(`${c.id}|${c.subs[0].id}`) : setOpen(c.id))}
+              >
+                <span style={{ fontSize: 22 }}>{c.icon}</span>
+                <span>{c.name}</span>
+              </button>
+            ))}
+          </div>
+          {openCat && openCat.group === g && openCat.subs.length > 1 && (
+            <div className="chips" style={{ marginTop: 10 }}>
+              {openCat.subs.map((s) => (
+                <button type="button" key={s.id} className={`chip ${value === `${openCat.id}|${s.id}` ? 'on' : ''}`} onClick={() => onPick(`${openCat.id}|${s.id}`)}>
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   )
 }

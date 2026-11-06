@@ -45,6 +45,8 @@ export interface Tx {
   voucherValue?: number
   incomeSource?: string
   recurringId?: string
+  /** versamento di fine mese: 'avanzo:YYYY-MM:personale' | 'avanzo:YYYY-MM:necessita' */
+  ref?: string
   createdAt?: number
 }
 
@@ -69,6 +71,8 @@ export interface Settings {
   expectedIncome: number
   incomeSources: string[]
   recapSeen: string[] // mesi di cui è stato mostrato il recap
+  /** avanzi che hai deciso di non versare */
+  leftoverDismissed?: string[]
 }
 
 export interface Recurring {

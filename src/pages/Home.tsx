@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { AllocationBar } from '../charts'
 import { computeBalances, pace, summarizeMonth, type CatSummary } from '../finance'
+import { PendingLeftovers } from '../Leftovers'
+import { Recap } from '../Recap'
 import { TxRow } from '../TxRow'
 import type { Group } from '../types'
 import { BudgetBadge, GROUP_COLOR, GROUP_LABEL, PeriodNav, Progress, useApp } from '../ui'
@@ -13,6 +15,7 @@ export function Home() {
   const b = useMemo(() => computeBalances(settings, txs), [settings, txs])
   const p = pace(s.personalLeft, month)
   const isCurrent = month === currentMonth()
+  const [recapMonth, openRecap] = useState<string | null>(null)
   const recent = txs.filter((t) => t.date.startsWith(month)).slice(0, 6)
 
   return (
@@ -34,6 +37,8 @@ export function Home() {
         </div>
       )}
 
+      {isCurrent && <PendingLeftovers compact onOpenRecap={openRecap} />}
+
       <div className="grid grid-2">
         <div className="hero">
           <div className="hero-label">🎯 Budget personale: ti restano</div>
@@ -47,7 +52,7 @@ export function Home() {
               Per stare nel budget: circa <b className="tnum">{fmt(p.perWeek)}</b> a settimana · <b className="tnum">{fmt(p.perDay)}</b> al giorno ({p.daysLeft} giorni rimasti)
             </div>
           )}
-          {s.personalLeft < 0 && <div className="small neg" style={{ marginTop: 12 }}>⚠ Hai superato il budget personale: la differenza verrà tolta dai risparmi a fine mese.</div>}
+          {s.personalLeft < 0 && <div className="small neg" style={{ marginTop: 12 }}>⚠ Hai superato il budget personale.</div>}
         </div>
 
         <div className="grid grid-tiles" style={{ gridTemplateColumns: 'repeat(2, minmax(0,1fr))' }}>
@@ -69,7 +74,7 @@ export function Home() {
           <button className="tile" style={{ textAlign: 'left' }} onClick={() => go('risparmi')}>
             <div className="tile-label"><span className="dot" style={{ background: 'var(--savings)' }} /> Risparmi</div>
             <div className="tile-value tnum">{fmt0(b.savings)}</div>
-            <div className="tile-sub tnum">{isCurrent ? `+${fmt0(s.savingsAlloc)} sicuri a fine mese` : 'totale accumulato'}</div>
+            <div className="tile-sub tnum">{isCurrent ? `+${fmt0(s.savingsAlloc)} a fine mese` : 'saldo attuale'}</div>
           </button>
         </div>
       </div>
@@ -87,7 +92,7 @@ export function Home() {
           ]}
         />
         <div className="small text2" style={{ marginTop: 12 }}>
-          A fine mese vanno nei risparmi la quota di <b className="tnum pos">{fmt0(s.savingsAlloc)}</b> più quello che non spendi di Necessità e Personale (oggi ancora {fmt(s.needsLeft + s.personalLeft)}, cala man mano che spendi).
+          A fine mese la quota di <b className="tnum pos">{fmt0(s.savingsAlloc)}</b> va nei risparmi in automatico. Quello che avanza di Necessità e Personale lo versi tu con un tasto quando il mese è chiuso.
         </div>
       </div>
 
@@ -112,6 +117,7 @@ export function Home() {
           </div>
         )}
       </div>
+      {recapMonth && <Recap month={recapMonth} onClose={() => openRecap(null)} />}
     </>
   )
 }

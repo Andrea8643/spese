@@ -11,10 +11,11 @@ Ad accesso privato: solo l'account Google `foschiniandrea25@gmail.com` può entr
   Il budget del mese si calcola sulle entrate registrate nel mese. Finché lo stipendio non è registrato, si usa una stima.
 - **Riconoscimento automatico**: scrivi "Burger King 12,50" e l'app propone *Personale › Ristoranti & Fast food*.
   Se correggi la categoria, l'app se lo ricorda.
-- **Fine mese**: quello che avanza di Personale e Necessità va nei **Risparmi** in automatico. Il **Fondo auto** invece è
-  cumulativo: riceve la sua quota ogni mese e da lì si pagano assicurazione, bollo, revisione e tagliandi.
+- **Fine mese**: la quota risparmio (60%) entra nei **Risparmi** in automatico. Il recap mostra quanto è avanzato di
+  Personale e Necessità e con il tasto **Versa** lo sposti nei risparmi. Il **Fondo auto** invece è cumulativo: riceve la
+  sua quota ogni mese e da lì si pagano assicurazione, bollo, revisione e tagliandi.
 - **Buoni pasto**: registri i buoni ricevuti. Quando paghi con i buoni indichi quanti ne hai usati, e l'eventuale resto in euro
-  (es. 17 € = 2 buoni + 1 € di bancomat). Al budget in euro conta solo il resto.
+  (es. 17 € = 2 buoni + 1 € con carta). Al budget in euro conta solo il resto.
 - **Ricorrenti**: abbonamenti e spese fisse registrati in automatico ogni mese o settimana.
 - **Recap**: a inizio mese si apre il riepilogo del mese appena finito.
 

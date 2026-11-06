@@ -23,9 +23,11 @@ const NAV: [Page, string, () => React.ReactElement][] = [
   ['impostazioni', 'Impostazioni', ISettings],
 ]
 
+const demoAllowed = !isConfigured || import.meta.env.VITE_DEMO === '1'
+
 export default function App() {
   const [user, setUser] = useState<User | null | undefined>(isConfigured ? undefined : null)
-  const [demo, setDemo] = useState(() => !isConfigured && safeGet('spese-demo') === '1')
+  const [demo, setDemo] = useState(() => demoAllowed && safeGet('spese-demo') === '1')
   const [err, setErr] = useState('')
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export default function App() {
 
   const backend = useMemo<Backend | null>(() => (demo ? localBackend() : user ? firestoreBackend(user.uid) : null), [demo, user])
 
-  if (user === undefined) return <Splash />
+  if (user === undefined && !demo) return <Splash />
   if (!backend) {
     return (
       <div className="login">
@@ -59,6 +61,9 @@ export default function App() {
               ⚙️ Firebase non è ancora configurato. Inserisci i dati del progetto in <code>src/firebase-config.ts</code>.
               <button className="btn btn-block" style={{ marginTop: 12 }} onClick={() => { safeSet('spese-demo', '1'); setDemo(true) }}>Prova l'app (dati solo in questo browser)</button>
             </div>
+          )}
+          {isConfigured && demoAllowed && (
+            <button className="btn btn-block" style={{ marginTop: 12 }} onClick={() => { safeSet('spese-demo', '1'); setDemo(true) }}>Modalità test</button>
           )}
           {err && <p className="small neg" style={{ marginTop: 14 }}>{err}</p>}
         </div>

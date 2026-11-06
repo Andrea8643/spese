@@ -63,8 +63,8 @@ export function Report() {
             <div className={`bold tnum ${balance < 0 ? 'neg' : 'pos'}`} style={{ fontSize: 22 }}>{fmt(balance)}</div>
           </div>
           <div className="grow">
-            <div className="small muted">{ms.closed ? 'Andato nei risparmi' : 'Nei risparmi a fine mese (previsto)'}</div>
-            <div className="bold tnum pos" style={{ fontSize: 22 }}>{fmt(ms.toSavings)}</div>
+            <div className="small muted">{ms.closed ? 'Avanzato (Personale + Necessità)' : 'Ancora da spendere (Personale + Necessità)'}</div>
+            <div className={`bold tnum ${ms.personalLeft + ms.needsLeft < 0 ? 'neg' : 'pos'}`} style={{ fontSize: 22 }}>{fmt(ms.personalLeft + ms.needsLeft)}</div>
           </div>
           <button className="btn" onClick={() => setRecap(true)}>📋 Recap del mese</button>
         </div>

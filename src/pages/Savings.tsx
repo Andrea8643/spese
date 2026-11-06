@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { SavingsLine } from '../charts'
 import { catOf, computeBalances, summarizeMonth } from '../finance'
+import { PendingLeftovers } from '../Leftovers'
 import { TxRow } from '../TxRow'
 import type { TxType } from '../types'
 import { Sheet, useApp } from '../ui'
@@ -23,8 +24,8 @@ export function Savings() {
   const points = useMemo(() => {
     const rows = [...b.savingsRows].reverse()
     const start = { label: 'Inizio', value: settings.initialSavings }
-    return [start, ...rows.map((r) => ({ label: MONTHS[Number(r.month.slice(5)) - 1].slice(0, 3), value: r.balanceAfter, projected: !r.closed }))]
-  }, [b.savingsRows, settings.initialSavings])
+    return [start, ...rows.map((r) => ({ label: MONTHS[Number(r.month.slice(5)) - 1].slice(0, 3), value: r.closed ? r.balanceAfter : b.savingsSure, projected: !r.closed }))]
+  }, [b.savingsRows, b.savingsSure, settings.initialSavings])
 
   const fundTx = txs.filter((t) => t.type === 'expense' && catOf(settings.categories, t.categoryId).fund).slice(0, 12)
   const moves = txs.filter((t) => ['saving_in', 'saving_out', 'to_fund', 'from_fund'].includes(t.type)).slice(0, 10)
@@ -36,14 +37,11 @@ export function Savings() {
 
       <div className="grid grid-2">
         <div className="hero">
-          <div className="hero-label">💰 Risparmi accumulati</div>
+          <div className="hero-label">💰 Risparmi</div>
           <div className="hero-value tnum">{fmt(b.savings)}</div>
           <div className="small text2">
-            Questo mese entreranno sicuramente <b className="tnum pos">{fmt(cur.savingsAlloc)}</b> (quota {settings.allocation.savingsPct}%{cur.incomeIsEstimate ? ' sullo stipendio stimato' : ''})
-            {cur.needsLeft + cur.personalLeft !== 0 && (
-              <>, più quello che avanzerà di Necessità e Personale: oggi <b className="tnum">{fmt(cur.needsLeft + cur.personalLeft)}</b>, ma scende man mano che spendi</>
-            )}.
-            <div className="xs muted" style={{ marginTop: 6 }}>Massimo a fine {monthLabel(currentMonth(), false).toLowerCase()}, se non spendi più nulla: {fmt(b.savingsProjected)}</div>
+            A fine {monthLabel(currentMonth(), false).toLowerCase()} entra in automatico la quota del {settings.allocation.savingsPct}%: <b className="tnum pos">+{fmt(cur.savingsAlloc)}</b>{cur.incomeIsEstimate ? ' (su stipendio stimato)' : ''} → <b className="tnum">{fmt(b.savingsSure)}</b>.
+            <div className="xs muted" style={{ marginTop: 6 }}>Quello che avanzerà di Personale e Necessità lo verserai tu a fine mese col pulsante “Versa” (oggi ne restano {fmt(Math.max(0, cur.personalLeft) + Math.max(0, cur.needsLeft))}).</div>
           </div>
           <div className="row wrap" style={{ marginTop: 16 }}>
             <button className="btn btn-sm btn-primary" onClick={() => setMove('saving_in')}>+ Versa</button>
@@ -58,27 +56,31 @@ export function Savings() {
         </div>
       </div>
 
+      <div style={{ marginTop: 14 }}><PendingLeftovers /></div>
+
       <h2 className="section-title">Mese per mese</h2>
       <div className="card table-wrap">
         <table className="table">
           <thead>
-            <tr><th>Mese</th><th className="num">Quota</th><th className="num">Avanzo pers.</th><th className="num">Avanzo nec.</th><th className="num">Manuali</th><th className="num">Totale mese</th><th className="num">Saldo</th></tr>
+            <tr><th>Mese</th><th className="num">Quota</th><th className="num">Avanzo pers.</th><th className="num">Avanzo nec.</th><th className="num">Avanzi versati</th><th className="num">Altri mov.</th><th className="num">Totale mese</th><th className="num">Saldo</th></tr>
           </thead>
           <tbody>
             {b.savingsRows.map((r) => (
               <tr key={r.month}>
                 <td>{monthLabel(r.month)}{!r.closed && <span className="badge badge-muted" style={{ marginLeft: 6 }}>in corso</span>}</td>
-                <td className="num">{fmt(r.quota)}</td>
+                <td className="num">{r.closed ? fmt(r.quota) : <span className="muted">{fmt(r.quota)}*</span>}</td>
                 <td className={`num ${r.personalLeft < 0 ? 'neg' : ''}`}>{fmt(r.personalLeft)}</td>
                 <td className={`num ${r.needsLeft < 0 ? 'neg' : ''}`}>{fmt(r.needsLeft)}</td>
+                <td className="num">{r.versed ? fmt(r.versed) : '—'}</td>
                 <td className="num">{r.manual ? fmt(r.manual) : '—'}</td>
                 <td className="num bold pos">{fmt(r.total)}</td>
                 <td className="num bold">{fmt(r.balanceAfter)}</td>
               </tr>
             ))}
-            <tr><td className="muted">Saldo iniziale</td><td colSpan={5} /><td className="num">{fmt(settings.initialSavings)}</td></tr>
+            <tr><td className="muted">Saldo iniziale</td><td colSpan={6} /><td className="num">{fmt(settings.initialSavings)}</td></tr>
           </tbody>
         </table>
+        <div className="xs muted" style={{ marginTop: 8 }}>* la quota del mese in corso viene aggiunta al saldo quando il mese finisce.</div>
       </div>
 
       <div className="grid grid-2" style={{ marginTop: 14 }}>

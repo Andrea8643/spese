@@ -1,7 +1,7 @@
 import { collection, deleteDoc, doc, onSnapshot, setDoc, writeBatch } from 'firebase/firestore'
 import { useEffect, useMemo, useState } from 'react'
 import { db } from './firebase'
-import { defaultSettings } from './defaults'
+import { DEFAULT_CATEGORIES, defaultSettings } from './defaults'
 import type { Learned, Recurring, Settings, Tx } from './types'
 import { addDays, clean, currentMonth, parseISO, todayISO, toISO } from './utils'
 
@@ -175,12 +175,15 @@ export function useStore(backend: Backend | null) {
     if (missing.length) void backend.saveTxs(missing)
   }, [backend, txs, recurring])
 
+  // aggiunge alle categorie salvate le nuove parole chiave del dizionario
+  const merged = useMemo(() => (settings ? withDefaultKeywords(settings) : settings), [settings])
+
   const loading = settings === undefined || settings === null || txs === undefined || recurring === undefined
   const sortedTxs = useMemo(
     () => (txs ?? []).slice().sort((a, b) => (a.date === b.date ? (b.createdAt ?? 0) - (a.createdAt ?? 0) : a.date < b.date ? 1 : -1)),
     [txs],
   )
-  return { loading, settings: settings as Settings, learned, txs: sortedTxs, recurring: recurring ?? [] }
+  return { loading, settings: merged as Settings, learned, txs: sortedTxs, recurring: recurring ?? [] }
 }
 
 export function safeGet(k: string): string | null {
@@ -195,5 +198,25 @@ export function safeSet(k: string, v: string) {
     localStorage.setItem(k, v)
   } catch {
     /* ignore */
+  }
+}
+
+function withDefaultKeywords(s: Settings): Settings {
+  return {
+    ...s,
+    categories: s.categories.map((c) => {
+      const def = DEFAULT_CATEGORIES.find((d) => d.id === c.id)
+      if (!def) return c
+      return {
+        ...c,
+        subs: c.subs.map((sub) => {
+          const ds = def.subs.find((x) => x.id === sub.id)
+          if (!ds) return sub
+          const kws = new Set(sub.keywords)
+          const extra = ds.keywords.filter((k) => !kws.has(k))
+          return extra.length ? { ...sub, keywords: [...sub.keywords, ...extra] } : sub
+        }),
+      }
+    }),
   }
 }

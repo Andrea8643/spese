@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { learnedLabel } from '../categorize'
 import { summarizeMonth } from '../finance'
 import { logout } from '../firebase'
 import { ILogout, ITrash } from '../icons'
@@ -190,7 +191,7 @@ export function SettingsPage({ email }: { email?: string | null }) {
                 const c = settings.categories.find((x) => x.id === v.c)
                 return (
                   <span key={k} className="chip">
-                    “{k}” → {c?.icon} {c?.subs.find((s) => s.id === v.s)?.name ?? c?.name}
+                    {learnedLabel(k)} → {c?.icon} {c?.subs.find((s) => s.id === v.s)?.name ?? c?.name}
                     <button className="btn-ghost" style={{ border: 0, background: 'none', padding: 0, marginLeft: 4 }} aria-label="Dimentica" onClick={() => { const n = { ...learned }; delete n[k]; void backend.saveLearned(n) }}>✕</button>
                   </span>
                 )
@@ -269,7 +270,7 @@ function RecurringSheet({ onClose }: { onClose: () => void }) {
                 {settings.categories.flatMap((c) => c.subs.map((s) => <option key={c.id + s.id} value={`${c.id}|${s.id}`}>{c.icon} {c.name} › {s.name}</option>))}
               </select>
             </div>
-            <div className="chips">{(['carta', 'bancomat', 'contanti'] as const).map((m) => <button type="button" key={m} className={`chip ${method === m ? 'on' : ''}`} onClick={() => setMethod(m)}>{METHOD_LABEL[m]}</button>)}</div>
+            <div className="chips">{(['carta', 'contanti'] as const).map((m) => <button type="button" key={m} className={`chip ${method === m ? 'on' : ''}`} onClick={() => setMethod(m)}>{METHOD_LABEL[m]}</button>)}</div>
           </>
         ) : (
           <div className="chips">{settings.incomeSources.map((s) => <button type="button" key={s} className={`chip ${source === s ? 'on' : ''}`} onClick={() => setSource(s)}>{s}</button>)}</div>

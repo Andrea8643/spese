@@ -50,6 +50,7 @@ export interface MonthSummary {
   totalExpense: number
   needsLeft: number
   personalLeft: number
+  /** quota sicura + avanzi (massimo che può andare nei risparmi) */
   toSavings: number
   categories: CatSummary[]
   expenses: Tx[]
@@ -137,20 +138,32 @@ export interface SavingsRow {
   quota: number
   needsLeft: number
   personalLeft: number
-  manual: number
+  versed: number // avanzi versati per quel mese
+  manual: number // altri movimenti manuali
   total: number
   balanceAfter: number
 }
 
+export interface PendingLeftover {
+  ref: string
+  month: string
+  group: Group
+  amount: number // positivo = avanzo da versare, negativo = sforamento
+}
+
 export interface Balances {
-  savings: number // accumulato (mesi chiusi + movimenti manuali)
-  savingsProjected: number // + previsto per il mese in corso
+  savings: number // saldo attuale
+  savingsSure: number // + quota del mese in corso (sicura)
+  savingsMax: number // + avanzi possibili del mese in corso
   fund: number
   vouchers: number
   vouchersValue: number
   savingsRows: SavingsRow[]
   fundRows: { month: string; quota: number; spent: number; transfers: number; balanceAfter: number }[]
+  pending: PendingLeftover[]
 }
+
+export const leftoverRef = (month: string, group: Group) => `avanzo:${month}:${group}`
 
 export function computeBalances(settings: Settings, txs: Tx[]): Balances {
   const now = currentMonth()
@@ -159,27 +172,31 @@ export function computeBalances(settings: Settings, txs: Tx[]): Balances {
   let fund = settings.initialFund
   const savingsRows: SavingsRow[] = []
   const fundRows: Balances['fundRows'] = []
-  let projected = 0
+  const pending: PendingLeftover[] = []
+  const dismissed = new Set(settings.leftoverDismissed ?? [])
+  let cur: MonthSummary | null = null
+
+  const savingDelta = (t: Tx) =>
+    t.type === 'saving_in' || t.type === 'from_fund' ? t.amount : t.type === 'saving_out' || t.type === 'to_fund' ? -t.amount : 0
+  const refMonth = (t: Tx) => (t.ref ? t.ref.split(':')[1] : null)
 
   for (const m of months) {
     const sum = summarizeMonth(settings, txs, m)
-    const inM = txs.filter((t) => monthOf(t.date) === m)
-    const manual = round2(
-      inM.reduce((s, t) => {
-        if (t.type === 'saving_in' || t.type === 'from_fund') return s + t.amount
-        if (t.type === 'saving_out' || t.type === 'to_fund') return s - t.amount
-        return s
-      }, 0),
-    )
-    const fundTransfers = round2(
-      inM.reduce((s, t) => (t.type === 'to_fund' ? s + t.amount : t.type === 'from_fund' ? s - t.amount : s), 0),
-    )
-    savings = round2(savings + manual)
-    if (sum.closed) savings = round2(savings + sum.toSavings)
-    else projected = sum.toSavings
+    const versed = round2(txs.filter((t) => t.ref && refMonth(t) === m).reduce((s, t) => s + savingDelta(t), 0))
+    const inM = txs.filter((t) => !t.ref && monthOf(t.date) === m)
+    const manual = round2(inM.reduce((s, t) => s + savingDelta(t), 0))
+    const fundTransfers = round2(inM.reduce((s, t) => (t.type === 'to_fund' ? s + t.amount : t.type === 'from_fund' ? s - t.amount : s), 0))
+    savings = round2(savings + manual + versed + (sum.closed ? sum.savingsAlloc : 0))
+    if (!sum.closed) cur = sum
+    if (sum.closed) {
+      for (const [g, left] of [['personale', sum.personalLeft], ['necessita', sum.needsLeft]] as [Group, number][]) {
+        const ref = leftoverRef(m, g)
+        if (Math.abs(left) >= 0.01 && !dismissed.has(ref) && !txs.some((t) => t.ref === ref)) pending.push({ ref, month: m, group: g, amount: left })
+      }
+    }
     savingsRows.push({
       month: m, closed: sum.closed, quota: sum.savingsAlloc, needsLeft: sum.needsLeft, personalLeft: sum.personalLeft,
-      manual, total: round2(sum.toSavings + manual), balanceAfter: sum.closed ? savings : round2(savings + projected),
+      versed, manual, total: round2((sum.closed ? sum.savingsAlloc : 0) + versed + manual), balanceAfter: savings,
     })
     fund = round2(fund + sum.fundQuota - sum.fundSpent + fundTransfers)
     fundRows.push({ month: m, quota: sum.fundQuota, spent: sum.fundSpent, transfers: fundTransfers, balanceAfter: fund })
@@ -194,14 +211,17 @@ export function computeBalances(settings: Settings, txs: Tx[]): Balances {
       return s
     }, 0)
 
+  const sure = round2(savings + (cur?.savingsAlloc ?? 0))
   return {
     savings,
-    savingsProjected: round2(savings + projected),
+    savingsSure: sure,
+    savingsMax: round2(sure + Math.max(0, cur?.needsLeft ?? 0) + Math.max(0, cur?.personalLeft ?? 0)),
     fund,
     vouchers,
     vouchersValue: round2(vouchers * settings.voucherValue),
     savingsRows: savingsRows.reverse(),
     fundRows: fundRows.reverse(),
+    pending,
   }
 }
 
