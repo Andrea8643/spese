@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Solo il proprietario (account Google autorizzato) può leggere e scrivere i propri dati.
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == userId
+        && request.auth.token.email == "foschiniandrea25@gmail.com"
+        && request.auth.token.email_verified == true;
+    }
+    // Tutto il resto è chiuso.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
