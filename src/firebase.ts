@@ -8,7 +8,7 @@ export const isConfigured = !firebaseConfig.apiKey.startsWith('INSERISCI')
 export const app = isConfigured ? initializeApp(firebaseConfig) : null
 export const auth = app ? getAuth(app) : null
 export const db = app
-  ? initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })
+  ? initializeFirestore(app, { ignoreUndefinedProperties: true, localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })
   : null
 
 export async function login() {

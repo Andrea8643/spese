@@ -52,7 +52,18 @@ function buildReport(settings: Settings, txs: Tx[], month: string) {
   return { s, rows, incomes, summary, cats, title: `Resoconto ${monthLabel(month)}` }
 }
 
-function download(blob: Blob, name: string) {
+async function download(blob: Blob, name: string) {
+  const file = new File([blob], name, { type: blob.type })
+  const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  if (ios && nav.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: name })
+      return
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return
+    }
+  }
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -96,7 +107,7 @@ export async function exportExcel(settings: Settings, txs: Tx[], month: string) 
     { sheet: 'Per categoria', data: catSheet as never, columns: [{ width: 12 }, { width: 28 }, { width: 10 }, { width: 13 }, { width: 15 }, { width: 18 }, { width: 13 }], stickyRowsCount: 1 },
     { sheet: 'Entrate', data: incomeSheet as never, columns: [{ width: 12 }, { width: 16 }, { width: 28 }, { width: 14 }] },
   ]).toBlob()
-  download(blob, `spese-${month}.xlsx`)
+  await download(blob, `spese-${month}.xlsx`)
 }
 
 export async function exportPdf(settings: Settings, txs: Tx[], month: string) {
@@ -187,5 +198,5 @@ export async function exportPdf(settings: Settings, txs: Tx[], month: string) {
       doc.text(`${r.title} · pagina ${doc.getNumberOfPages()}`, W / 2, H - 20, { align: 'center' })
     },
   })
-  download(doc.output('blob'), `spese-${month}.pdf`)
+  await download(doc.output('blob'), `spese-${month}.pdf`)
 }

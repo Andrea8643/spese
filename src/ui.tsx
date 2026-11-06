@@ -3,6 +3,7 @@ import {
   ShoppingCart, Smartphone, Tv, UtensilsCrossed, X, type LucideIcon,
 } from 'lucide-react'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { Backend } from './store'
 import type { Category, Learned, Recurring, Settings, Tx } from './types'
 import { fmt } from './utils'
@@ -111,7 +112,8 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
       document.body.style.overflow = ''
     }
   }, [onClose])
-  return (
+  // il portal porta la finestra fuori dalla pagina animata: così resta sempre fissata allo schermo
+  return createPortal(
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="sheet" role="dialog" aria-modal="true" aria-label={title}>
         <div className="sheet-head">
@@ -120,7 +122,8 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

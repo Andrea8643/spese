@@ -84,6 +84,15 @@ function Shell({ backend, demo, email }: { backend: Backend; demo: boolean; emai
   const toast = useToast()
   const openAdd = useCallback((tx?: Partial<Tx>) => setAdding(tx ?? {}), [])
   const go = useCallback((p: Page) => { setPage(p); window.scrollTo({ top: 0 }) }, [])
+  const [fatal, setFatal] = useState<string | null>(null)
+  const showToast = toast.show
+  useEffect(() => {
+    const onErr = (e: Event) => showToast(`⚠ Errore: ${(e as CustomEvent).detail}`)
+    const onFatal = (e: Event) => setFatal(String((e as CustomEvent).detail))
+    window.addEventListener('spese-error', onErr)
+    window.addEventListener('spese-fatal', onFatal)
+    return () => { window.removeEventListener('spese-error', onErr); window.removeEventListener('spese-fatal', onFatal) }
+  }, [showToast])
 
   // a inizio mese mostra il recap del mese appena finito
   useEffect(() => {
@@ -96,6 +105,22 @@ function Shell({ backend, demo, email }: { backend: Backend; demo: boolean; emai
     }
   }, [store.loading, store.settings, backend])
 
+  if (fatal && store.loading) {
+    return (
+      <div className="login">
+        <Aurora />
+        <div className="login-card card">
+          <h1 style={{ fontSize: 22 }}>Non riesco a leggere i dati</h1>
+          <p className="small text2">Motivo: <code>{fatal}</code></p>
+          <p className="xs muted">Se dice “permission-denied”, controlla le regole di sicurezza di Firestore o di aver fatto l'accesso con l'account giusto.</p>
+          <div className="row" style={{ justifyContent: 'center', marginTop: 12 }}>
+            <button className="btn" onClick={() => location.reload()}>Riprova</button>
+            <button className="btn btn-ghost" onClick={() => logout()}>Esci</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
   if (store.loading) return <Splash />
 
   const ctx = { ...store, backend, demo, openAdd, toast: toast.show, go }

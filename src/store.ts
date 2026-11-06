@@ -18,29 +18,51 @@ export interface Backend {
   deleteRecurring(id: string): Promise<void>
 }
 
+/** Segnala un errore all'interfaccia (mostrato come avviso). */
+export function reportError(e: unknown) {
+  console.error(e)
+  const msg = (e as { code?: string; message?: string })?.code ?? (e as Error)?.message ?? String(e)
+  window.dispatchEvent(new CustomEvent('spese-error', { detail: msg }))
+}
+
+/**
+ * Firestore salva subito nella memoria del telefono e sincronizza col server appena può.
+ * Non aspettiamo il server: così l'app funziona anche senza connessione.
+ */
+const fire = (p: Promise<unknown>) => {
+  p.catch(reportError)
+  return Promise.resolve()
+}
+
 // ───────── Firestore: users/{uid}/... ─────────
 export function firestoreBackend(uid: string): Backend {
   const d = db!
   const base = `users/${uid}`
   return {
-    onSettings: (cb) => onSnapshot(doc(d, base, 'meta', 'settings'), (s) => cb(s.exists() ? (s.data() as Settings) : null)),
-    onLearned: (cb) => onSnapshot(doc(d, base, 'meta', 'learned'), (s) => cb((s.data()?.map as Learned) ?? {})),
-    onTxs: (cb) => onSnapshot(collection(d, base, 'tx'), (q) => cb(q.docs.map((x) => ({ ...(x.data() as Tx), id: x.id })))),
+    onSettings: (cb) => onSnapshot(doc(d, base, 'meta', 'settings'), (s) => cb(s.exists() ? (s.data() as Settings) : null), listenError),
+    onLearned: (cb) => onSnapshot(doc(d, base, 'meta', 'learned'), (s) => cb((s.data()?.map as Learned) ?? {}), listenError),
+    onTxs: (cb) => onSnapshot(collection(d, base, 'tx'), (q) => cb(q.docs.map((x) => ({ ...(x.data() as Tx), id: x.id }))), listenError),
     onRecurring: (cb) =>
-      onSnapshot(collection(d, base, 'recurring'), (q) => cb(q.docs.map((x) => ({ ...(x.data() as Recurring), id: x.id })))),
-    saveSettings: (s) => setDoc(doc(d, base, 'meta', 'settings'), s),
-    saveLearned: (l) => setDoc(doc(d, base, 'meta', 'learned'), { map: l }),
-    saveTxs: async (txs) => {
+      onSnapshot(collection(d, base, 'recurring'), (q) => cb(q.docs.map((x) => ({ ...(x.data() as Recurring), id: x.id }))), listenError),
+    saveSettings: (s) => fire(setDoc(doc(d, base, 'meta', 'settings'), s)),
+    saveLearned: (l) => fire(setDoc(doc(d, base, 'meta', 'learned'), { map: l })),
+    saveTxs: (txs) => {
       for (let i = 0; i < txs.length; i += 400) {
         const b = writeBatch(d)
         for (const t of txs.slice(i, i + 400)) b.set(doc(d, base, 'tx', t.id), clean(t))
-        await b.commit()
+        fire(b.commit())
       }
+      return Promise.resolve()
     },
-    deleteTx: (id) => deleteDoc(doc(d, base, 'tx', id)),
-    saveRecurring: (r) => setDoc(doc(d, base, 'recurring', r.id), clean(r)),
-    deleteRecurring: (id) => deleteDoc(doc(d, base, 'recurring', id)),
+    deleteTx: (id) => fire(deleteDoc(doc(d, base, 'tx', id))),
+    saveRecurring: (r) => fire(setDoc(doc(d, base, 'recurring', r.id), clean(r))),
+    deleteRecurring: (id) => fire(deleteDoc(doc(d, base, 'recurring', id))),
   }
+}
+
+function listenError(e: unknown) {
+  window.dispatchEvent(new CustomEvent('spese-fatal', { detail: (e as { code?: string })?.code ?? String(e) }))
+  reportError(e)
 }
 
 // ───────── Modalità prova: tutto nel browser ─────────

@@ -106,7 +106,7 @@ export function AddTx({ initial, onClose }: { initial?: Partial<Tx>; onClose: ()
         const rec: Recurring = {
           id: uid(), type: mode, description: tx.description, amount: tx.amount, categoryId: tx.categoryId, subId: tx.subId,
           method: tx.method === 'buoni' ? 'carta' : tx.method, incomeSource: tx.incomeSource, frequency: 'monthly',
-          day: Math.min(28, parseISO(date).getDate()), startDate: addDays(date, 1), active: true,
+          day: parseISO(date).getDate(), startDate: addDays(date, 1), active: true,
         }
         await backend.saveRecurring(rec)
       }

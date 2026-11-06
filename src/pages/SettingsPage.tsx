@@ -5,7 +5,7 @@ import { logout } from '../firebase'
 import { LogOut, Pencil, Trash2 } from 'lucide-react'
 import type { Category, Group, PayMethod, Recurring, Settings } from '../types'
 import { CatIcon, GROUP_COLOR, GROUP_LABEL, METHOD_LABEL, Sheet, useApp } from '../ui'
-import { cap, currentMonth, fmt, fmt0, MONTHS, parseAmount, round2, todayISO, uid, WEEKDAYS_SHORT } from '../utils'
+import { addDays, cap, currentMonth, fmt, fmt0, MONTHS, parseAmount, round2, todayISO, uid, WEEKDAYS_SHORT } from '../utils'
 
 const num = (s: string) => {
   const n = parseAmount(s)
@@ -15,12 +15,24 @@ const num = (s: string) => {
 export function SettingsPage({ email }: { email?: string | null }) {
   const { settings, txs, backend, toast, recurring, learned, demo } = useApp()
   const [draft, setDraft] = useState<Settings>(settings)
+  // campi che si modificano da questa pagina (il resto non viene mai sovrascritto)
+  const editable = (x: Settings) => ({
+    categories: x.categories, allocation: x.allocation, expectedIncome: x.expectedIncome, initialSavings: x.initialSavings,
+    initialFund: x.initialFund, initialVouchers: x.initialVouchers, voucherValue: x.voucherValue, incomeSources: x.incomeSources,
+  })
   const [recEdit, setRecEdit] = useState<Recurring | 'new' | null>(null)
   // ordine delle categorie per percentuale (si aggiorna quando finisci di modificare)
   const sortIds = (d: Settings) => d.categories.slice().sort((x, y) => (d.allocation.catPct[y.id] ?? 0) - (d.allocation.catPct[x.id] ?? 0)).map((c) => c.id)
+  const pos = (id: string) => (order.includes(id) ? order.indexOf(id) : 999)
   const [order, setOrder] = useState<string[]>(() => sortIds(settings))
   const resort = () => setOrder(sortIds(draft))
-  const dirty = JSON.stringify({ ...draft, recapSeen: [] }) !== JSON.stringify({ ...settings, recapSeen: [] })
+  const dirty = JSON.stringify(editable(draft)) !== JSON.stringify(editable(settings))
+  // se le impostazioni cambiano altrove e qui non stai modificando nulla, aggiorna la bozza
+  const [seen, setSeen] = useState(settings)
+  if (seen !== settings) {
+    setSeen(settings)
+    if (!dirty) setDraft(settings)
+  }
   const base = useMemo(() => summarizeMonth(draft, txs, currentMonth()).base, [draft, txs])
   const a = draft.allocation
   const totalPct = a.savingsPct + a.needsPct + a.personalPct
@@ -32,7 +44,7 @@ export function SettingsPage({ email }: { email?: string | null }) {
   async function save() {
     if (totalPct !== 100) return toast('Le tre percentuali devono fare 100%')
     const m = currentMonth()
-    const next: Settings = { ...draft, recapSeen: settings.recapSeen, allocationHistory: { ...draft.allocationHistory, [m]: draft.allocation } }
+    const next: Settings = { ...settings, ...editable(draft), allocationHistory: { ...settings.allocationHistory, [m]: draft.allocation } }
     await backend.saveSettings(next)
     resort()
     toast('Impostazioni salvate ✓')
@@ -86,7 +98,7 @@ export function SettingsPage({ email }: { email?: string | null }) {
 
         {(['necessita', 'personale'] as Group[]).map((g) => {
           const groupBudget = (base * (g === 'necessita' ? a.needsPct : a.personalPct)) / 100
-          const cats = draft.categories.filter((c) => c.group === g).sort((x, y) => order.indexOf(x.id) - order.indexOf(y.id))
+          const cats = draft.categories.filter((c) => c.group === g).sort((x, y) => pos(x.id) - pos(y.id))
           const sum = cats.reduce((s, c) => s + (a.catPct[c.id] ?? 0), 0)
           return (
             <div className="card" key={g}>
@@ -267,8 +279,10 @@ function RecurringSheet({ onClose, initial }: { onClose: () => void; initial?: R
         const n = parseAmount(amount)
         if (!desc.trim() || !Number.isFinite(n) || n <= 0) return toast('Compila descrizione e importo')
         const [c, s] = cat.split('|')
+        const scheduleChanged = initial && (initial.frequency !== freq || initial.day !== day || (initial.month ?? 1) !== month)
+        const startDate = scheduleChanged && start === initial.startDate && start <= todayISO() ? addDays(todayISO(), 1) : start
         const r: Recurring = {
-          id: initial?.id ?? uid(), type, description: desc.trim(), amount: round2(n), frequency: freq, day, startDate: start, active,
+          id: initial?.id ?? uid(), type, description: desc.trim(), amount: round2(n), frequency: freq, day, startDate, active,
           skip: initial?.skip, month: freq === 'yearly' ? month : undefined,
           ...(type === 'expense' ? { categoryId: c, subId: s, method } : { incomeSource: source }),
         }
