@@ -4,7 +4,7 @@ import { catOf, computeBalances, summarizeMonth } from '../finance'
 import { TxRow } from '../TxRow'
 import type { TxType } from '../types'
 import { Sheet, useApp } from '../ui'
-import { currentMonth, fmt, fmt0, monthLabel, MONTHS, parseAmount, round2, todayISO, uid } from '../utils'
+import { currentMonth, fmt, monthLabel, MONTHS, parseAmount, round2, todayISO, uid } from '../utils'
 
 type Move = Extract<TxType, 'saving_in' | 'saving_out' | 'to_fund' | 'from_fund'>
 const MOVE_LABEL: Record<Move, string> = {
